@@ -1,265 +1,288 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CapaciHub</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box}body{font-family:Inter,system-ui,sans-serif;background:#fff;color:#202124;margin:0}
-    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#dadce0;border-radius:3px}
-    .sidebar{width:260px;border-right:1px solid #e8eaed;background:#f8f9fa;display:flex;flex-direction:column;height:100vh;position:fixed;left:0;top:0;z-index:40}
-    .main{margin-left:260px;min-height:100vh;display:flex;flex-direction:column}
-    .nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:0 20px 20px 0;margin-right:8px;font-size:14px;color:#3c4043;cursor:pointer;transition:background .15s}
-    .nav-item:hover{background:#e8eaed}.nav-item.active{background:#e8f0fe;color:#1967d2;font-weight:500}
-    .nav-item .material-icons-outlined{font-size:20px}
-    .tree-item{display:flex;align-items:center;gap:6px;padding:4px 8px 4px 12px;font-size:13px;color:#3c4043;cursor:pointer;border-radius:4px}
-    .tree-item:hover{background:#e8eaed}.tree-item.active{background:#e8f0fe;color:#1967d2}.tree-folder{font-weight:500}
-    .tree-indent{padding-left:28px}.tree-indent-2{padding-left:44px}
-    .topbar{height:56px;border-bottom:1px solid #e8eaed;display:flex;align-items:center;padding:0 24px;gap:16px;background:#fff;position:sticky;top:0;z-index:30}
-    .search-box{flex:1;max-width:480px;position:relative}
-    .search-box input{width:100%;height:40px;border:none;background:#f1f3f4;border-radius:8px;padding:0 16px 0 40px;font-size:14px;outline:none}
-    .search-box input:focus{background:#fff;box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15)}
-    .search-box .material-icons-outlined{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#5f6368;font-size:20px}
-    .btn{height:36px;padding:0 16px;border-radius:18px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:none;transition:all .15s}
-    .btn-primary{background:#1a73e8;color:#fff}.btn-primary:hover{background:#1765cc}
-    .btn-outline{background:#fff;color:#1a73e8;border:1px solid #dadce0}.btn-outline:hover{background:#f8f9fa}
-    .btn-ghost{background:transparent;color:#5f6368}.btn-ghost:hover{background:#f1f3f4}
-    .content{padding:24px 32px;flex:1}.card{background:#fff;border:1px solid #e8eaed;border-radius:12px}
-    .card-hover:hover{box-shadow:0 1px 3px rgba(60,64,67,.2),0 4px 8px 3px rgba(60,64,67,.1)}
-    .chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;font-size:12px;font-weight:500}
-    .chip-blue{background:#e8f0fe;color:#1967d2}.chip-green{background:#e6f4ea;color:#137333}
-    .chip-yellow{background:#fef7e0;color:#b06000}.chip-red{background:#fce8e6;color:#c5221f}
-    .view{display:none}.view.active{display:block}
-    .note-title{font-size:28px;font-weight:600;border:none;outline:none;width:100%;background:transparent;color:#202124;margin-bottom:8px}
-    .note-meta{font-size:12px;color:#80868b;margin-bottom:24px;display:flex;gap:16px;flex-wrap:wrap}
-    .note-body{font-size:15px;line-height:1.7;color:#3c4043}
-    .note-body h2{font-size:18px;font-weight:600;margin:28px 0 10px;color:#202124}
-    .note-body p{margin:0 0 12px}.note-body ul{padding-left:20px;margin:0 0 12px}.note-body li{margin-bottom:4px}
-    .wiki-link{color:#1a73e8;text-decoration:none}.wiki-link:hover{border-bottom:1px solid #1a73e8}.tag{color:#1a73e8;font-size:13px;margin-right:8px}
-    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e8eaed;border:1px solid #e8eaed;border-radius:8px;overflow:hidden}
-    .cal-header{background:#f8f9fa;padding:10px;text-align:center;font-size:12px;font-weight:500;color:#5f6368}
-    .cal-day{background:#fff;min-height:88px;padding:6px;font-size:13px}.cal-day.other{background:#fafafa;color:#9aa0a6}.cal-day.today{background:#e8f0fe}
-    .cal-event{font-size:11px;padding:2px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-    .modal-overlay{position:fixed;inset:0;background:rgba(32,33,36,.4);z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
-    .modal-overlay.open{display:flex}.modal{background:#fff;border-radius:12px;width:100%;max-width:480px;box-shadow:0 8px 24px rgba(60,64,67,.3);overflow:hidden}
-    .modal-header{padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center}.modal-body{padding:16px 24px 24px}
-    .field{margin-bottom:16px}.field label{display:block;font-size:13px;font-weight:500;color:#5f6368;margin-bottom:6px}
-    .field input,.field select{width:100%;height:40px;border:1px solid #dadce0;border-radius:8px;padding:0 12px;font-size:14px;outline:none}
-    .field input:focus,.field select:focus{border-color:#1a73e8}
-    @media(max-width:900px){.sidebar{transform:translateX(-100%);transition:transform .25s}.sidebar.open{transform:translateX(0)}.main{margin-left:0}}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CapaciHub</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --text: #202124;
+  --muted: #5f6368;
+  --primary: #1a73e8;
+  --primary-soft: #e8f0fe;
+  --green: #188038;
+  --green-soft: #e6f4ea;
+  --orange: #e37400;
+  --orange-soft: #fef7e0;
+  --red: #d93025;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(60,64,67,.15), 0 1px 3px 1px rgba(60,64,67,.08);
+  --shadow-lg: 0 4px 12px rgba(60,64,67,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Google Sans','Roboto',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.logo{padding:20px 16px 12px;display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff}
+.logo h1{font-size:18px;font-weight:500;letter-spacing:-0.3px}
+.logo p{font-size:11px;color:var(--muted)}
+.nav{padding:8px 8px 16px}
+.nav-btn{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:none;background:transparent;border-radius:24px;font-size:14px;color:var(--muted);cursor:pointer;text-align:left;font-family:inherit;transition:all .15s}
+.nav-btn:hover{background:#f1f3f4;color:var(--text)}
+.nav-btn.active{background:var(--primary-soft);color:var(--primary);font-weight:500}
+.nav-btn .material-icons-outlined{font-size:20px}
+.tree-section{flex:1;overflow-y:auto;padding:0 8px 16px;border-top:1px solid var(--border)}
+.tree-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:16px 12px 8px}
+.tree-item{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:8px;font-size:13px;color:var(--text);cursor:pointer}
+.tree-item:hover{background:#f1f3f4}
+.tree-item .material-icons-outlined{font-size:18px;color:#f9ab00}
+.tree-item.file .material-icons-outlined{color:var(--muted);font-size:16px}
+.tree-nested{padding-left:20px}
+.user-bar{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0}
+.search{flex:1;max-width:420px;height:40px;background:#f1f3f4;border-radius:8px;display:flex;align-items:center;padding:0 14px;gap:10px}
+.search input{border:none;background:transparent;outline:none;font-size:14px;width:100%;font-family:inherit}
+.search .material-icons-outlined{color:var(--muted);font-size:20px}
+.btn{height:36px;padding:0 18px;border-radius:18px;border:none;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:all .15s}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1765cc;box-shadow:var(--shadow)}
+.btn-outline{background:transparent;color:var(--primary);border:1px solid var(--border)}.btn-outline:hover{background:var(--primary-soft)}
+.content{flex:1;overflow:hidden;display:flex}
+.panel{flex:1;overflow-y:auto;padding:24px 28px}
+.panel-right{width:300px;border-left:1px solid var(--border);background:var(--surface);overflow-y:auto;padding:20px;flex-shrink:0}
+.view{display:none;height:100%}.view.active{display:flex;flex-direction:column;height:100%}
+.note-header{margin-bottom:20px}
+.note-title{font-size:26px;font-weight:500;letter-spacing:-0.4px;margin-bottom:8px}
+.note-meta{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.tag{color:var(--primary);font-size:12px}
+.note-body{font-size:15px;line-height:1.75;color:#3c4043;max-width:680px}
+.note-body h2{font-size:17px;font-weight:500;margin:28px 0 10px;color:var(--text)}
+.note-body p{margin-bottom:12px}.note-body ul{padding-left:20px;margin-bottom:12px}.note-body li{margin-bottom:4px}
+.wiki{color:var(--primary);text-decoration:none;border-bottom:1px solid transparent}.wiki:hover{border-bottom-color:var(--primary)}
+.prop-card{background:var(--bg);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
+.prop-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+.prop-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px}.prop-row:last-child{margin-bottom:0}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:11px;font-size:11px;font-weight:500}
+.chip-red{background:#fce8e6;color:var(--red)}.chip-green{background:var(--green-soft);color:var(--green)}
+.chip-blue{background:var(--primary-soft);color:var(--primary)}.chip-orange{background:var(--orange-soft);color:var(--orange)}
+.link-list a{display:block;font-size:13px;color:var(--primary);text-decoration:none;padding:4px 0}.link-list a:hover{text-decoration:underline}
+.file-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer}
+.file-row .material-icons-outlined{font-size:18px}
+.graph-wrap{flex:1;position:relative;background:#0f1115;overflow:hidden}
+#graphCanvas{width:100%;height:100%;display:block}
+.graph-toolbar{position:absolute;top:16px;left:16px;display:flex;gap:8px;z-index:10}
+.graph-toolbar .btn{background:rgba(255,255,255,.1);color:#e8eaed;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
+.graph-toolbar .btn:hover{background:rgba(255,255,255,.18)}
+.graph-toolbar .btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.graph-legend{position:absolute;bottom:16px;left:16px;background:rgba(15,17,21,.85);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;font-size:12px;color:#bdc1c6;backdrop-filter:blur(8px)}
+.graph-legend div{display:flex;align-items:center;gap:8px;margin-bottom:6px}.graph-legend div:last-child{margin-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%}
+.graph-info{position:absolute;top:16px;right:16px;background:rgba(15,17,21,.85);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;max-width:240px;color:#e8eaed;font-size:13px;backdrop-filter:blur(8px);display:none}
+.graph-info.visible{display:block}.graph-info h3{font-size:14px;font-weight:500;margin-bottom:6px}.graph-info p{font-size:12px;color:#9aa0a6;line-height:1.5}
+.page-title{font-size:22px;font-weight:500;margin-bottom:4px}.page-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+.cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cal-h{background:var(--bg);padding:10px;text-align:center;font-size:12px;font-weight:500;color:var(--muted)}
+.cal-d{background:var(--surface);min-height:84px;padding:6px;font-size:13px}.cal-d.other{background:#fafafa;color:#9aa0a6}.cal-d.today{background:var(--primary-soft)}
+.cal-ev{font-size:11px;padding:2px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:20px}
+.table-card table{width:100%;border-collapse:collapse;font-size:13px}
+.table-card th{text-align:left;padding:12px 16px;background:var(--bg);font-weight:500;color:var(--muted);border-bottom:1px solid var(--border)}
+.table-card td{padding:12px 16px;border-bottom:1px solid #f1f3f4}.table-card tr:last-child td{border-bottom:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:box-shadow .15s;cursor:pointer}.card:hover{box-shadow:var(--shadow)}
+.modal-bg{position:fixed;inset:0;background:rgba(32,33,36,.45);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}.modal{background:var(--surface);border-radius:16px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);padding:24px}
+.modal h3{font-size:18px;font-weight:500;margin-bottom:16px}
+.field{margin-bottom:14px}.field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;font-size:14px;font-family:inherit;outline:none}
+.field input:focus,.field select:focus{border-color:var(--primary)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+</style>
 </head>
 <body>
-<aside class="sidebar" id="sidebar">
-  <div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px">
-    <div style="width:32px;height:32px;border-radius:8px;background:#1a73e8;display:flex;align-items:center;justify-content:center">
-      <span class="material-icons-outlined" style="color:#fff;font-size:18px">school</span>
-    </div>
-    <div><div style="font-weight:600;font-size:15px;line-height:1.2">CapaciHub</div><div style="font-size:11px;color:#80868b">Vault de Capacitaciones</div></div>
-  </div>
-  <div style="padding:0 8px 8px">
-    <div class="nav-item active" data-view="vault" onclick="showView('vault',this)"><span class="material-icons-outlined">folder_open</span> Vault</div>
-    <div class="nav-item" data-view="cronograma" onclick="showView('cronograma',this)"><span class="material-icons-outlined">calendar_today</span> Cronograma</div>
-    <div class="nav-item" data-view="examenes" onclick="showView('examenes',this)"><span class="material-icons-outlined">quiz</span> Exámenes</div>
-    <div class="nav-item" data-view="reportes" onclick="showView('reportes',this)"><span class="material-icons-outlined">assessment</span> Auditoría</div>
-  </div>
-  <div style="height:1px;background:#e8eaed;margin:4px 12px"></div>
-  <div style="flex:1;overflow-y:auto;padding:8px 4px 16px">
-    <div style="padding:4px 12px 8px;font-size:11px;font-weight:600;color:#80868b;text-transform:uppercase;letter-spacing:.4px">Archivos</div>
-    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>2026</span></div>
-    <div class="folder-children">
-      <div class="tree-item tree-indent tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>NR-12 Seguridad</span></div>
-      <div class="folder-children">
-        <div class="tree-item tree-indent-2 active"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Procedimiento.md</span></div>
-        <div class="tree-item tree-indent-2"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Manual v3.md</span></div>
-        <div class="tree-item tree-indent-2"><span class="material-icons-outlined" style="font-size:16px;color:#ea4335">picture_as_pdf</span><span>Lista asistencia.pdf</span></div>
+<aside class="sidebar">
+  <div class="logo"><div class="logo-icon"><span class="material-icons-outlined" style="font-size:20px">school</span></div><div><h1>CapaciHub</h1><p>Vault · SST</p></div></div>
+  <nav class="nav">
+    <button class="nav-btn active" data-v="vault" onclick="go('vault',this)"><span class="material-icons-outlined">folder_open</span> Vault</button>
+    <button class="nav-btn" data-v="grafo" onclick="go('grafo',this)"><span class="material-icons-outlined">hub</span> Grafo</button>
+    <button class="nav-btn" data-v="cronograma" onclick="go('cronograma',this)"><span class="material-icons-outlined">calendar_today</span> Cronograma</button>
+    <button class="nav-btn" data-v="examenes" onclick="go('examenes',this)"><span class="material-icons-outlined">quiz</span> Exámenes</button>
+    <button class="nav-btn" data-v="auditoria" onclick="go('auditoria',this)"><span class="material-icons-outlined">verified</span> Auditoría</button>
+  </nav>
+  <div class="tree-section">
+    <div class="tree-label">Archivos</div>
+    <div class="tree-item"><span class="material-icons-outlined">folder</span> 2026</div>
+    <div class="tree-nested">
+      <div class="tree-item"><span class="material-icons-outlined">folder</span> NR-12 Seguridad</div>
+      <div class="tree-nested">
+        <div class="tree-item file"><span class="material-icons-outlined">description</span> Procedimiento.md</div>
+        <div class="tree-item file"><span class="material-icons-outlined">description</span> Manual v3.md</div>
       </div>
-      <div class="tree-item tree-indent tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>Primeros Auxilios</span></div>
-      <div class="folder-children" style="display:none"><div class="tree-item tree-indent-2"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Protocolo RCP.md</span></div></div>
-      <div class="tree-item tree-indent tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>ISO 45001</span></div>
+      <div class="tree-item"><span class="material-icons-outlined">folder</span> Primeros Auxilios</div>
+      <div class="tree-item"><span class="material-icons-outlined">folder</span> ISO 45001</div>
     </div>
-    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>2027</span></div>
-    <div class="folder-children" style="display:none"><div class="tree-item tree-indent"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Cronograma borrador.md</span></div></div>
-    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="material-icons-outlined" style="font-size:18px;color:#f9ab00">folder</span><span>Base de Conocimiento</span></div>
-    <div class="folder-children">
-      <div class="tree-item tree-indent"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Matriz de competencias.md</span></div>
-      <div class="tree-item tree-indent"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Checklist auditoría.md</span></div>
-      <div class="tree-item tree-indent"><span class="material-icons-outlined" style="font-size:16px;color:#5f6368">description</span><span>Procedimiento emergencia.md</span></div>
-    </div>
+    <div class="tree-item"><span class="material-icons-outlined">folder</span> 2027</div>
+    <div class="tree-item"><span class="material-icons-outlined">folder</span> Base de Conocimiento</div>
   </div>
-  <div style="padding:12px 16px;border-top:1px solid #e8eaed;font-size:12px;color:#80868b">
-    <div style="display:flex;align-items:center;gap:8px"><div style="width:24px;height:24px;border-radius:50%;background:#e8f0fe;color:#1967d2;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px">A</div><span>Admin</span></div>
-  </div>
+  <div class="user-bar"><div class="avatar">A</div> Admin</div>
 </aside>
-
 <div class="main">
   <header class="topbar">
-    <div class="search-box"><span class="material-icons-outlined">search</span><input type="text" placeholder="Buscar en el vault, capacitaciones, notas..."></div>
-    <div style="display:flex;gap:8px;margin-left:auto">
-      <button class="btn btn-outline" onclick="openModal('modalNuevaNota')"><span class="material-icons-outlined" style="font-size:18px">note_add</span> Nueva nota</button>
-      <button class="btn btn-primary" onclick="openModal('modalNuevaCap')"><span class="material-icons-outlined" style="font-size:18px">add</span> Capacitación</button>
-    </div>
+    <div class="search"><span class="material-icons-outlined">search</span><input type="text" placeholder="Buscar notas, capacitaciones, enlaces…"></div>
+    <button class="btn btn-outline" onclick="openM('mNota')"><span class="material-icons-outlined" style="font-size:18px">note_add</span> Nota</button>
+    <button class="btn btn-primary" onclick="openM('mCap')"><span class="material-icons-outlined" style="font-size:18px">add</span> Capacitación</button>
   </header>
-
   <div class="content">
-    <div id="view-vault" class="view active">
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;max-width:1200px">
-        <div class="card" style="padding:32px 40px;min-height:520px">
-          <input class="note-title" value="Procedimiento NR-12 — Seguridad en Máquinas" readonly>
-          <div class="note-meta"><span>Actualizado: 20 Ago 2026</span><span>·</span><span>Versión 3.1</span><span>·</span><span class="tag">#obligatoria</span><span class="tag">#nr12</span><span class="tag">#seguridad</span></div>
-          <div class="note-body">
-            <p>Este procedimiento aplica a todas las áreas de producción y mantenimiento. Está vinculado a la capacitación <a href="#" class="wiki-link">[[NR-12 Seguridad Industrial]]</a> y al examen correspondiente.</p>
-            <h2>1. Objetivo</h2>
-            <p>Garantizar la seguridad de los trabajadores en el uso de máquinas y equipos de trabajo, cumpliendo con la Norma Regulamentadora NR-12.</p>
-            <h2>2. Alcance</h2>
-            <p>Aplica a operadores, mantenedores y supervisores de las áreas de producción, embalaje y almacén.</p>
-            <h2>3. Responsabilidades</h2>
-            <ul>
-              <li><strong>Operador:</strong> Verificar protecciones antes de iniciar turno.</li>
-              <li><strong>Supervisor:</strong> Inspección semanal y registro de no conformidades.</li>
-              <li><strong>SST:</strong> Capacitación anual y actualización de este documento.</li>
-            </ul>
-            <h2>4. Vinculaciones</h2>
-            <p>Relacionado con: <a href="#" class="wiki-link">[[Matriz de competencias]]</a> · <a href="#" class="wiki-link">[[Checklist auditoría]]</a> · <a href="#" class="wiki-link">[[Protocolo de emergencia]]</a></p>
-            <h2>5. Evidencias para auditoría</h2>
-            <ul>
-              <li>Lista de asistencia firmada (PDF en carpeta del evento)</li>
-              <li>Resultados del examen (nota mínima 70%)</li>
-              <li>Registro fotográfico de la sesión</li>
-              <li>Versión del material utilizado (control de versiones)</li>
-            </ul>
-          </div>
+    <div id="v-vault" class="view active" style="flex-direction:row">
+      <div class="panel">
+        <div class="note-header">
+          <div class="note-title">Procedimiento NR-12 — Seguridad en Máquinas</div>
+          <div class="note-meta"><span>20 Ago 2026</span><span>·</span><span>v3.1</span><span>·</span><span class="tag">#obligatoria</span><span class="tag">#nr12</span><span class="tag">#seguridad</span></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div class="card" style="padding:16px">
-            <div style="font-size:12px;font-weight:600;color:#80868b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Propiedades</div>
-            <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Tipo</span><span class="chip chip-red">Obligatoria</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Duración</span><span>4 horas</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Instructor</span><span>Ing. Pérez</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Próxima fecha</span><span>12 Sep 2026</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Estado</span><span class="chip chip-green">Programada</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:#5f6368">Versión material</span><span style="font-family:monospace;font-size:12px">v3.1</span></div>
-            </div>
-          </div>
-          <div class="card" style="padding:16px">
-            <div style="font-size:12px;font-weight:600;color:#80868b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Enlazado desde</div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <a href="#" class="wiki-link" style="font-size:13px">Matriz de competencias.md</a>
-              <a href="#" class="wiki-link" style="font-size:13px">Checklist auditoría.md</a>
-              <a href="#" class="wiki-link" style="font-size:13px">Cronograma 2026.md</a>
-            </div>
-          </div>
-          <div class="card" style="padding:16px">
-            <div style="font-size:12px;font-weight:600;color:#80868b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Archivos adjuntos</div>
-            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-              <div style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="material-icons-outlined" style="font-size:18px;color:#ea4335">picture_as_pdf</span><span>Manual_NR12_v3.pdf</span></div>
-              <div style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="material-icons-outlined" style="font-size:18px;color:#1a73e8">description</span><span>Presentación.pptx</span></div>
-              <div style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="material-icons-outlined" style="font-size:18px;color:#34a853">table_chart</span><span>Asistencia_12Sep.xlsx</span></div>
-            </div>
-          </div>
+        <div class="note-body">
+          <p>Este procedimiento aplica a todas las áreas de producción. Está vinculado a <a class="wiki" href="#">[[NR-12 Seguridad Industrial]]</a> y al examen correspondiente.</p>
+          <h2>1. Objetivo</h2>
+          <p>Garantizar la seguridad de los trabajadores en el uso de máquinas y equipos, cumpliendo con la NR-12.</p>
+          <h2>2. Responsabilidades</h2>
+          <ul><li><strong>Operador:</strong> Verificar protecciones al inicio de turno.</li><li><strong>Supervisor:</strong> Inspección semanal y registro de no conformidades.</li><li><strong>SST:</strong> Capacitación anual y control de versiones.</li></ul>
+          <h2>3. Vinculaciones</h2>
+          <p><a class="wiki" href="#">[[Matriz de competencias]]</a> · <a class="wiki" href="#">[[Checklist auditoría]]</a> · <a class="wiki" href="#">[[Protocolo de emergencia]]</a></p>
+          <h2>4. Evidencias para auditoría</h2>
+          <ul><li>Lista de asistencia firmada</li><li>Resultados del examen (mín. 70%)</li><li>Registro fotográfico</li><li>Versión del material utilizado</li></ul>
+        </div>
+      </div>
+      <div class="panel-right">
+        <div class="prop-card"><div class="prop-label">Propiedades</div>
+          <div class="prop-row"><span style="color:var(--muted)">Tipo</span><span class="chip chip-red">Obligatoria</span></div>
+          <div class="prop-row"><span style="color:var(--muted)">Duración</span><span>4 h</span></div>
+          <div class="prop-row"><span style="color:var(--muted)">Instructor</span><span>Ing. Pérez</span></div>
+          <div class="prop-row"><span style="color:var(--muted)">Próxima</span><span>12 Sep 2026</span></div>
+          <div class="prop-row"><span style="color:var(--muted)">Estado</span><span class="chip chip-green">Programada</span></div>
+        </div>
+        <div class="prop-card"><div class="prop-label">Enlazado desde</div><div class="link-list"><a href="#">Matriz de competencias.md</a><a href="#">Checklist auditoría.md</a><a href="#">Cronograma 2026.md</a></div></div>
+        <div class="prop-card"><div class="prop-label">Adjuntos</div>
+          <div class="file-row"><span class="material-icons-outlined" style="color:#ea4335">picture_as_pdf</span> Manual_NR12_v3.pdf</div>
+          <div class="file-row"><span class="material-icons-outlined" style="color:var(--primary)">description</span> Presentación.pptx</div>
+          <div class="file-row"><span class="material-icons-outlined" style="color:var(--green)">table_chart</span> Asistencia.xlsx</div>
         </div>
       </div>
     </div>
-
-    <div id="view-cronograma" class="view">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div><h1 style="font-size:22px;font-weight:600;margin:0">Cronograma</h1><p style="font-size:13px;color:#5f6368;margin:4px 0 0">Planificación anual · Preparado para auditoría</p></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="yearSelect" style="height:36px;border:1px solid #dadce0;border-radius:8px;padding:0 12px;font-size:14px;outline:none" onchange="renderCalendar()"><option value="2026">2026</option><option value="2027">2027</option></select>
-          <button class="btn btn-outline" onclick="changeMonth(-1)"><span class="material-icons-outlined" style="font-size:18px">chevron_left</span></button>
-          <span id="monthTitle" style="font-weight:500;min-width:140px;text-align:center">Agosto 2026</span>
-          <button class="btn btn-outline" onclick="changeMonth(1)"><span class="material-icons-outlined" style="font-size:18px">chevron_right</span></button>
+    <div id="v-grafo" class="view">
+      <div class="graph-wrap">
+        <canvas id="graphCanvas"></canvas>
+        <div class="graph-toolbar">
+          <button class="btn active" id="btnForce" onclick="setGraphMode('force')">Fuerza</button>
+          <button class="btn" id="btnOrbit" onclick="setGraphMode('orbit')">Órbita</button>
+          <button class="btn" onclick="resetGraph()">Reset</button>
         </div>
-      </div>
-      <div class="cal-grid" id="calendarGrid"></div>
-      <div class="card" style="margin-top:24px;overflow:hidden">
-        <div style="padding:16px 20px;border-bottom:1px solid #e8eaed;font-weight:500;font-size:14px">Capacitaciones del año</div>
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead><tr style="background:#f8f9fa;text-align:left">
-            <th style="padding:12px 16px;font-weight:500;color:#5f6368">Fecha</th>
-            <th style="padding:12px 16px;font-weight:500;color:#5f6368">Capacitación</th>
-            <th style="padding:12px 16px;font-weight:500;color:#5f6368">Tipo</th>
-            <th style="padding:12px 16px;font-weight:500;color:#5f6368">Estado</th>
-            <th style="padding:12px 16px;font-weight:500;color:#5f6368">Asistentes</th>
-          </tr></thead>
-          <tbody>
-            <tr style="border-top:1px solid #f1f3f4"><td style="padding:12px 16px">12 Sep 2026</td><td style="padding:12px 16px;font-weight:500">Seguridad Industrial — NR-12</td><td style="padding:12px 16px"><span class="chip chip-blue">Presencial</span></td><td style="padding:12px 16px"><span class="chip chip-green">Programada</span></td><td style="padding:12px 16px">28 / 30</td></tr>
-            <tr style="border-top:1px solid #f1f3f4"><td style="padding:12px 16px">18 Sep 2026</td><td style="padding:12px 16px;font-weight:500">Prevención Riesgos Psicosociales</td><td style="padding:12px 16px"><span class="chip chip-blue">Virtual</span></td><td style="padding:12px 16px"><span class="chip chip-green">Confirmada</span></td><td style="padding:12px 16px">45 / 50</td></tr>
-            <tr style="border-top:1px solid #f1f3f4"><td style="padding:12px 16px">05 Oct 2026</td><td style="padding:12px 16px;font-weight:500">Actualización ISO 45001</td><td style="padding:12px 16px"><span class="chip chip-blue">Presencial</span></td><td style="padding:12px 16px"><span class="chip chip-yellow">Pendiente material</span></td><td style="padding:12px 16px">0 / 25</td></tr>
-          </tbody>
-        </table>
+        <div class="graph-legend">
+          <div><span class="dot" style="background:#1a73e8"></span> Capacitación</div>
+          <div><span class="dot" style="background:#34a853"></span> Procedimiento</div>
+          <div><span class="dot" style="background:#f9ab00"></span> Examen</div>
+          <div><span class="dot" style="background:#a142f4"></span> Política / Matriz</div>
+        </div>
+        <div class="graph-info" id="graphInfo"><h3 id="giTitle">—</h3><p id="giDesc">—</p></div>
       </div>
     </div>
-
-    <div id="view-examenes" class="view">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div><h1 style="font-size:22px;font-weight:600;margin:0">Exámenes</h1><p style="font-size:13px;color:#5f6368;margin:4px 0 0">Evaluaciones vinculadas a capacitaciones</p></div>
-        <button class="btn btn-primary" onclick="openModal('modalNuevoExamen')"><span class="material-icons-outlined" style="font-size:18px">add</span> Crear examen</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
-        <div class="card card-hover" style="padding:20px;cursor:pointer">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="chip chip-green">Activo</span></div>
-          <div style="font-weight:600;font-size:16px;margin-bottom:4px">Evaluación NR-12</div>
-          <div style="font-size:13px;color:#5f6368;margin-bottom:16px">10 preguntas · Nota mínima 70%</div>
-          <div style="display:flex;gap:16px;font-size:13px;color:#5f6368"><span>42 respuestas</span><span>Promedio 82%</span></div>
+    <div id="v-cronograma" class="view">
+      <div class="panel" style="width:100%">
+        <div class="page-title">Cronograma</div><div class="page-sub">Planificación anual · Listo para auditoría</div>
+        <div class="cal-nav">
+          <select id="yearSelect" style="height:36px;border:1px solid var(--border);border-radius:8px;padding:0 12px;font-size:14px;outline:none" onchange="renderCal()"><option value="2026">2026</option><option value="2027">2027</option></select>
+          <button class="btn btn-outline" onclick="chgMonth(-1)" style="padding:0 10px"><span class="material-icons-outlined" style="font-size:18px">chevron_left</span></button>
+          <span id="monthTitle" style="font-weight:500;min-width:130px;text-align:center">Agosto 2026</span>
+          <button class="btn btn-outline" onclick="chgMonth(1)" style="padding:0 10px"><span class="material-icons-outlined" style="font-size:18px">chevron_right</span></button>
         </div>
-        <div class="card card-hover" style="padding:20px;cursor:pointer">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="chip chip-yellow">Borrador</span></div>
-          <div style="font-weight:600;font-size:16px;margin-bottom:4px">Quiz ISO 45001</div>
-          <div style="font-size:13px;color:#5f6368;margin-bottom:16px">15 preguntas · Nota mínima 80%</div>
-          <div style="font-size:13px;color:#5f6368">0 respuestas</div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="table-card"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Tipo</th><th>Estado</th><th>Asistentes</th></tr></thead>
+        <tbody>
+          <tr><td>12 Sep 2026</td><td style="font-weight:500">Seguridad Industrial — NR-12</td><td><span class="chip chip-blue">Presencial</span></td><td><span class="chip chip-green">Programada</span></td><td>28 / 30</td></tr>
+          <tr><td>18 Sep 2026</td><td style="font-weight:500">Riesgos Psicosociales</td><td><span class="chip chip-blue">Virtual</span></td><td><span class="chip chip-green">Confirmada</span></td><td>45 / 50</td></tr>
+          <tr><td>05 Oct 2026</td><td style="font-weight:500">ISO 45001</td><td><span class="chip chip-blue">Presencial</span></td><td><span class="chip chip-orange">Pendiente</span></td><td>0 / 25</td></tr>
+        </tbody></table></div>
+      </div>
+    </div>
+    <div id="v-examenes" class="view">
+      <div class="panel" style="width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div><div class="page-title">Exámenes</div><div class="page-sub" style="margin:0">Vinculados a capacitaciones · Resultados auditables</div></div>
+          <button class="btn btn-primary" onclick="openM('mEx')"><span class="material-icons-outlined" style="font-size:18px">add</span> Crear</button>
+        </div>
+        <div class="cards">
+          <div class="card"><span class="chip chip-green" style="margin-bottom:10px">Activo</span><div style="font-weight:500;font-size:16px;margin-bottom:4px">Evaluación NR-12</div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">10 preguntas · Mín. 70%</div><div style="font-size:13px;color:var(--muted)">42 respuestas · Promedio 82%</div></div>
+          <div class="card"><span class="chip chip-orange" style="margin-bottom:10px">Borrador</span><div style="font-weight:500;font-size:16px;margin-bottom:4px">Quiz ISO 45001</div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">15 preguntas · Mín. 80%</div><div style="font-size:13px;color:var(--muted)">0 respuestas</div></div>
         </div>
       </div>
     </div>
-
-    <div id="view-reportes" class="view">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div><h1 style="font-size:22px;font-weight:600;margin:0">Auditoría</h1><p style="font-size:13px;color:#5f6368;margin:4px 0 0">Evidencias listas · Paquete de fin de año</p></div>
-        <button class="btn btn-primary"><span class="material-icons-outlined" style="font-size:18px">download</span> Descargar paquete</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:24px">
-        <div class="card card-hover" style="padding:20px;cursor:pointer"><div style="width:40px;height:40px;border-radius:10px;background:#fce8e6;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:#c5221f">picture_as_pdf</span></div><div style="font-weight:500;font-size:14px">Cronograma firmado</div><div style="font-size:12px;color:#5f6368;margin-top:4px">PDF con fechas y estados</div></div>
-        <div class="card card-hover" style="padding:20px;cursor:pointer"><div style="width:40px;height:40px;border-radius:10px;background:#e6f4ea;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:#137333">assignment_turned_in</span></div><div style="font-weight:500;font-size:14px">Matriz de cumplimiento</div><div style="font-size:12px;color:#5f6368;margin-top:4px">Por persona y área</div></div>
-        <div class="card card-hover" style="padding:20px;cursor:pointer"><div style="width:40px;height:40px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:#1967d2">quiz</span></div><div style="font-weight:500;font-size:14px">Resultados de exámenes</div><div style="font-size:12px;color:#5f6368;margin-top:4px">Promedios y evidencias</div></div>
-        <div class="card card-hover" style="padding:20px;cursor:pointer"><div style="width:40px;height:40px;border-radius:10px;background:#fef7e0;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:#b06000">folder_shared</span></div><div style="font-weight:500;font-size:14px">Índice de evidencias</div><div style="font-size:12px;color:#5f6368;margin-top:4px">Ubicación de cada archivo</div></div>
-      </div>
-      <div class="card" style="padding:20px">
-        <div style="font-weight:500;margin-bottom:12px">Checklist de fin de año</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#1a73e8"> Cronograma del año actual aprobado y firmado</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#1a73e8"> Cronograma del próximo año elaborado</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:#1a73e8"> Listas de asistencia digitalizadas y archivadas</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#1a73e8"> Materiales con control de versiones</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:#1a73e8"> Resultados de evaluaciones disponibles</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:#1a73e8"> Certificados emitidos</label>
+    <div id="v-auditoria" class="view">
+      <div class="panel" style="width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div><div class="page-title">Auditoría</div><div class="page-sub" style="margin:0">Evidencias · Paquete de fin de año</div></div>
+          <button class="btn btn-primary"><span class="material-icons-outlined" style="font-size:18px">download</span> Descargar paquete</button>
+        </div>
+        <div class="cards" style="margin-bottom:20px">
+          <div class="card"><div style="width:40px;height:40px;border-radius:10px;background:#fce8e6;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:var(--red)">picture_as_pdf</span></div><div style="font-weight:500">Cronograma firmado</div><div style="font-size:12px;color:var(--muted);margin-top:4px">PDF con fechas y estados</div></div>
+          <div class="card"><div style="width:40px;height:40px;border-radius:10px;background:var(--green-soft);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:var(--green)">assignment_turned_in</span></div><div style="font-weight:500">Matriz de cumplimiento</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Por persona y área</div></div>
+          <div class="card"><div style="width:40px;height:40px;border-radius:10px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:var(--primary)">quiz</span></div><div style="font-weight:500">Resultados de exámenes</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Promedios y evidencias</div></div>
+          <div class="card"><div style="width:40px;height:40px;border-radius:10px;background:var(--orange-soft);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><span class="material-icons-outlined" style="color:var(--orange)">folder_shared</span></div><div style="font-weight:500">Índice de evidencias</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Ubicación de cada archivo</div></div>
+        </div>
+        <div class="table-card" style="padding:20px">
+          <div style="font-weight:500;margin-bottom:12px">Checklist de fin de año</div>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--primary);width:16px;height:16px"> Cronograma del año actual aprobado</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--primary);width:16px;height:16px"> Cronograma del próximo año elaborado</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="checkbox" style="accent-color:var(--primary);width:16px;height:16px"> Listas de asistencia digitalizadas</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--primary);width:16px;height:16px"> Materiales con control de versiones</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer"><input type="checkbox" style="accent-color:var(--primary);width:16px;height:16px"> Resultados de evaluaciones disponibles</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" style="accent-color:var(--primary);width:16px;height:16px"> Certificados emitidos</label>
         </div>
       </div>
     </div>
   </div>
 </div>
-
-<div class="modal-overlay" id="modalNuevaCap"><div class="modal"><div class="modal-header"><h3 style="margin:0;font-size:18px;font-weight:600">Nueva capacitación</h3><button class="btn btn-ghost" onclick="closeModal('modalNuevaCap')" style="padding:4px"><span class="material-icons-outlined">close</span></button></div><div class="modal-body"><div class="field"><label>Nombre</label><input type="text" placeholder="Ej. Seguridad Industrial NR-12"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Fecha</label><input type="date"></div><div class="field"><label>Hora</label><input type="time"></div></div><div class="field"><label>Tipo</label><select><option>Presencial</option><option>Virtual</option><option>Híbrida</option></select></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px"><button class="btn btn-outline" onclick="closeModal('modalNuevaCap')">Cancelar</button><button class="btn btn-primary">Guardar</button></div></div></div></div>
-
-<div class="modal-overlay" id="modalNuevaNota"><div class="modal"><div class="modal-header"><h3 style="margin:0;font-size:18px;font-weight:600">Nueva nota</h3><button class="btn btn-ghost" onclick="closeModal('modalNuevaNota')" style="padding:4px"><span class="material-icons-outlined">close</span></button></div><div class="modal-body"><div class="field"><label>Título</label><input type="text" placeholder="Nombre de la nota"></div><div class="field"><label>Carpeta</label><select><option>2026 / NR-12 Seguridad</option><option>Base de Conocimiento</option><option>2027</option></select></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px"><button class="btn btn-outline" onclick="closeModal('modalNuevaNota')">Cancelar</button><button class="btn btn-primary">Crear</button></div></div></div></div>
-
-<div class="modal-overlay" id="modalNuevoExamen"><div class="modal"><div class="modal-header"><h3 style="margin:0;font-size:18px;font-weight:600">Crear examen</h3><button class="btn btn-ghost" onclick="closeModal('modalNuevoExamen')" style="padding:4px"><span class="material-icons-outlined">close</span></button></div><div class="modal-body"><div class="field"><label>Título</label><input type="text" placeholder="Ej. Evaluación NR-12"></div><div class="field"><label>Vincular a capacitación</label><select><option>Seguridad Industrial — NR-12</option><option>Primeros Auxilios</option><option>ISO 45001</option></select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Nota mínima (%)</label><input type="number" value="70"></div><div class="field"><label>Tiempo (min)</label><input type="number" value="30"></div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px"><button class="btn btn-outline" onclick="closeModal('modalNuevoExamen')">Cancelar</button><button class="btn btn-primary">Crear y editar</button></div></div></div></div>
-
+<div class="modal-bg" id="mCap"><div class="modal"><h3>Nueva capacitación</h3>
+  <div class="field"><label>Nombre</label><input placeholder="Ej. Seguridad Industrial NR-12"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Fecha</label><input type="date"></div><div class="field"><label>Hora</label><input type="time"></div></div>
+  <div class="field"><label>Tipo</label><select><option>Presencial</option><option>Virtual</option><option>Híbrida</option></select></div>
+  <div class="modal-actions"><button class="btn btn-outline" onclick="closeM('mCap')">Cancelar</button><button class="btn btn-primary">Guardar</button></div>
+</div></div>
+<div class="modal-bg" id="mNota"><div class="modal"><h3>Nueva nota</h3>
+  <div class="field"><label>Título</label><input placeholder="Nombre de la nota"></div>
+  <div class="field"><label>Carpeta</label><select><option>2026 / NR-12</option><option>Base de Conocimiento</option><option>2027</option></select></div>
+  <div class="modal-actions"><button class="btn btn-outline" onclick="closeM('mNota')">Cancelar</button><button class="btn btn-primary">Crear</button></div>
+</div></div>
+<div class="modal-bg" id="mEx"><div class="modal"><h3>Crear examen</h3>
+  <div class="field"><label>Título</label><input placeholder="Ej. Evaluación NR-12"></div>
+  <div class="field"><label>Vincular a</label><select><option>NR-12 Seguridad</option><option>Primeros Auxilios</option><option>ISO 45001</option></select></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Nota mín. %</label><input type="number" value="70"></div><div class="field"><label>Tiempo min</label><input type="number" value="30"></div></div>
+  <div class="modal-actions"><button class="btn btn-outline" onclick="closeM('mEx')">Cancelar</button><button class="btn btn-primary">Crear</button></div>
+</div></div>
 <script>
-function showView(id,el){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+id).classList.add('active');document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));if(el)el.classList.add('active')}
-function toggleFolder(el){const n=el.nextElementSibling;if(n&&n.classList.contains('folder-children'))n.style.display=n.style.display==='none'?'block':'none'}
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-let currentMonth=7,currentYear=2026;
-const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const events={'2026-8-12':[{title:'NR-12',color:'#e8f0fe',text:'#1967d2'}],'2026-8-22':[{title:'Primeros Auxilios',color:'#e6f4ea',text:'#137333'}],'2026-9-12':[{title:'NR-12',color:'#e8f0fe',text:'#1967d2'}],'2026-9-18':[{title:'Riesgos Psico',color:'#f3e8fd',text:'#7627bb'}],'2026-10-5':[{title:'ISO 45001',color:'#fef7e0',text:'#b06000'}]};
-function renderCalendar(){const year=parseInt(document.getElementById('yearSelect')?.value||currentYear);currentYear=year;const grid=document.getElementById('calendarGrid');if(!grid)return;document.getElementById('monthTitle').textContent=monthNames[currentMonth]+' '+currentYear;const headers=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];let html=headers.map(h=>`<div class="cal-header">${h}</div>`).join('');const first=new Date(currentYear,currentMonth,1);let start=first.getDay();start=start===0?6:start-1;const daysInMonth=new Date(currentYear,currentMonth+1,0).getDate();const prevDays=new Date(currentYear,currentMonth,0).getDate();for(let i=0;i<start;i++)html+=`<div class="cal-day other">${prevDays-start+i+1}</div>`;const today=new Date();for(let d=1;d<=daysInMonth;d++){const key=`${currentYear}-${currentMonth+1}-${d}`;const isToday=today.getFullYear()===currentYear&&today.getMonth()===currentMonth&&today.getDate()===d;const dayEvents=events[key]||[];const evHtml=dayEvents.map(e=>`<div class="cal-event" style="background:${e.color};color:${e.text}">${e.title}</div>`).join('');html+=`<div class="cal-day ${isToday?'today':''}"><div style="font-weight:500">${d}</div>${evHtml}</div>`}const total=start+daysInMonth;const remaining=total%7===0?0:7-(total%7);for(let i=1;i<=remaining;i++)html+=`<div class="cal-day other">${i}</div>`;grid.innerHTML=html}
-function changeMonth(delta){currentMonth+=delta;if(currentMonth>11){currentMonth=0;currentYear++}if(currentMonth<0){currentMonth=11;currentYear--}const sel=document.getElementById('yearSelect');if(sel)sel.value=currentYear;renderCalendar()}
-document.addEventListener('DOMContentLoaded',renderCalendar);
+function go(id,el){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('v-'+id).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');if(id==='grafo')setTimeout(initGraph,50)}
+function openM(id){document.getElementById(id).classList.add('open')}function closeM(id){document.getElementById(id).classList.remove('open')}
+let cm=7,cy=2026;const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const evs={'2026-8-12':[{t:'NR-12',c:'#e8f0fe',x:'#1967d2'}],'2026-9-12':[{t:'NR-12',c:'#e8f0fe',x:'#1967d2'}],'2026-9-18':[{t:'Riesgos',c:'#f3e8fd',x:'#7627bb'}],'2026-10-5':[{t:'ISO 45001',c:'#fef7e0',x:'#b06000'}]};
+function renderCal(){cy=parseInt(document.getElementById('yearSelect').value||cy);document.getElementById('monthTitle').textContent=months[cm]+' '+cy;const g=document.getElementById('calGrid');let h=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="cal-h">${x}</div>`).join('');const first=new Date(cy,cm,1);let s=first.getDay();s=s===0?6:s-1;const dim=new Date(cy,cm+1,0).getDate();const pd=new Date(cy,cm,0).getDate();for(let i=0;i<s;i++)h+=`<div class="cal-d other">${pd-s+i+1}</div>`;const td=new Date();for(let d=1;d<=dim;d++){const k=`${cy}-${cm+1}-${d}`;const isT=td.getFullYear()===cy&&td.getMonth()===cm&&td.getDate()===d;const e=(evs[k]||[]).map(x=>`<div class="cal-ev" style="background:${x.c};color:${x.x}">${x.t}</div>`).join('');h+=`<div class="cal-d ${isT?'today':''}"><div style="font-weight:500">${d}</div>${e}</div>`}const rem=(s+dim)%7===0?0:7-((s+dim)%7);for(let i=1;i<=rem;i++)h+=`<div class="cal-d other">${i}</div>`;g.innerHTML=h}
+function chgMonth(d){cm+=d;if(cm>11){cm=0;cy++}if(cm<0){cm=11;cy--}document.getElementById('yearSelect').value=cy;renderCal()}
+document.addEventListener('DOMContentLoaded',renderCal);
+const nodes=[{id:'nr12',label:'NR-12 Seguridad',type:'cap',x:0,y:0},{id:'proc',label:'Procedimiento NR-12',type:'proc',x:0,y:0},{id:'ex-nr12',label:'Examen NR-12',type:'exam',x:0,y:0},{id:'aux',label:'Primeros Auxilios',type:'cap',x:0,y:0},{id:'rcp',label:'Protocolo RCP',type:'proc',x:0,y:0},{id:'iso',label:'ISO 45001',type:'cap',x:0,y:0},{id:'matriz',label:'Matriz competencias',type:'policy',x:0,y:0},{id:'check',label:'Checklist auditoría',type:'policy',x:0,y:0},{id:'emerg',label:'Proc. emergencia',type:'proc',x:0,y:0},{id:'psico',label:'Riesgos psicosociales',type:'cap',x:0,y:0}];
+const links=[{s:'nr12',t:'proc'},{s:'nr12',t:'ex-nr12'},{s:'nr12',t:'matriz'},{s:'proc',t:'check'},{s:'proc',t:'emerg'},{s:'aux',t:'rcp'},{s:'aux',t:'emerg'},{s:'iso',t:'matriz'},{s:'iso',t:'check'},{s:'matriz',t:'check'},{s:'psico',t:'emerg'},{s:'ex-nr12',t:'check'}];
+const colors={cap:'#1a73e8',proc:'#34a853',exam:'#f9ab00',policy:'#a142f4'};
+const descs={nr12:'Capacitación obligatoria anual. 4h. Instructor: Ing. Pérez.',proc:'Procedimiento operativo v3.1. Vinculado a examen y matriz.','ex-nr12':'10 preguntas · Nota mínima 70% · 42 respuestas.',aux:'Capacitación recurrente. RCP y emergencias médicas.',rcp:'Protocolo de reanimación cardiopulmonar en planta.',iso:'Actualización del sistema de gestión SST.',matriz:'Matriz de competencias por puesto y área.',check:'Checklist de evidencias para auditoría de fin de año.',emerg:'Procedimiento general de emergencias y puntos de encuentro.',psico:'Prevención de riesgos psicosociales. Virtual.'};
+let canvas,ctx,W,H,animId,mode='force',vx={},vy={},drag=null,hover=null;
+function initGraph(){canvas=document.getElementById('graphCanvas');if(!canvas)return;const wrap=canvas.parentElement;W=wrap.clientWidth;H=wrap.clientHeight;canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx=canvas.getContext('2d');ctx.scale(devicePixelRatio,devicePixelRatio);nodes.forEach((n,i)=>{const a=(i/nodes.length)*Math.PI*2;n.x=W/2+Math.cos(a)*Math.min(W,H)*0.28;n.y=H/2+Math.sin(a)*Math.min(W,H)*0.28;vx[n.id]=0;vy[n.id]=0});canvas.onmousedown=e=>{const p=pos(e);drag=findNode(p.x,p.y)};canvas.onmousemove=e=>{const p=pos(e);if(drag){drag.x=p.x;drag.y=p.y;vx[drag.id]=0;vy[drag.id]=0}hover=findNode(p.x,p.y);const info=document.getElementById('graphInfo');if(hover){info.classList.add('visible');document.getElementById('giTitle').textContent=hover.label;document.getElementById('giDesc').textContent=descs[hover.id]||''}else info.classList.remove('visible')};canvas.onmouseup=()=>{drag=null};canvas.onmouseleave=()=>{drag=null;hover=null};if(animId)cancelAnimationFrame(animId);loop()}
+function pos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function findNode(x,y){for(const n of nodes){if(Math.hypot(n.x-x,n.y-y)<18)return n}return null}
+function setGraphMode(m){mode=m;document.getElementById('btnForce').classList.toggle('active',m==='force');document.getElementById('btnOrbit').classList.toggle('active',m==='orbit')}
+function resetGraph(){initGraph()}
+function loop(){if(mode==='force'){for(let i=0;i<nodes.length;i++){for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];let dx=b.x-a.x,dy=b.y-a.y;let dist=Math.hypot(dx,dy)||1;const f=8000/(dist*dist);dx/=dist;dy/=dist;if(a!==drag){vx[a.id]-=f*dx;vy[a.id]-=f*dy}if(b!==drag){vx[b.id]+=f*dx;vy[b.id]+=f*dy}}}for(const l of links){const a=nodes.find(n=>n.id===l.s);const b=nodes.find(n=>n.id===l.t);if(!a||!b)continue;let dx=b.x-a.x,dy=b.y-a.y;let dist=Math.hypot(dx,dy)||1;const f=(dist-120)*0.02;dx/=dist;dy/=dist;if(a!==drag){vx[a.id]+=f*dx;vy[a.id]+=f*dy}if(b!==drag){vx[b.id]-=f*dx;vy[b.id]-=f*dy}}for(const n of nodes){if(n===drag)continue;vx[n.id]+=(W/2-n.x)*0.005;vy[n.id]+=(H/2-n.y)*0.005;vx[n.id]*=0.85;vy[n.id]*=0.85;n.x+=vx[n.id];n.y+=vy[n.id];n.x=Math.max(30,Math.min(W-30,n.x));n.y=Math.max(30,Math.min(H-30,n.y))}}else{const t=Date.now()/3000;nodes.forEach((n,i)=>{if(n===drag)return;const a=t+(i/nodes.length)*Math.PI*2;const r=Math.min(W,H)*0.28;n.x+=(W/2+Math.cos(a)*r-n.x)*0.05;n.y+=(H/2+Math.sin(a)*r-n.y)*0.05})}ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(255,255,255,0.03)';for(let i=0;i<40;i++){const x=(Math.sin(i*12.3)*0.5+0.5)*W;const y=(Math.cos(i*7.1)*0.5+0.5)*H;ctx.beginPath();ctx.arc(x,y,1.2,0,Math.PI*2);ctx.fill()}for(const l of links){const a=nodes.find(n=>n.id===l.s);const b=nodes.find(n=>n.id===l.t);if(!a||!b)continue;const hl=hover&&(hover.id===l.s||hover.id===l.t);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=hl?'rgba(26,115,232,0.55)':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:1;ctx.stroke()}for(const n of nodes){const r=(hover===n||drag===n)?14:10;const c=colors[n.type]||'#fff';ctx.beginPath();ctx.arc(n.x,n.y,r+8,0,Math.PI*2);ctx.fillStyle=c+'22';ctx.fill();ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.font='500 12px Google Sans, Roboto, sans-serif';ctx.fillStyle='#e8eaed';ctx.textAlign='center';ctx.fillText(n.label,n.x,n.y+r+16)}animId=requestAnimationFrame(loop)}
+window.addEventListener('resize',()=>{if(document.getElementById('v-grafo').classList.contains('active'))initGraph()});
 </script>
 </body>
 </html>
