@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CapaciHub — Sistema de Gestión de Capacitaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined|Material+Icons" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#e8f0fe',
+              100: '#d2e3fc',
+              200: '#aecbfa',
+              300: '#8ab4f8',
+              400: '#669df6',
+              500: '#4285f4',
+              600: '#1a73e8',
+              700: '#1967d2',
+              800: '#185abc',
+              900: '#174ea6',
+            },
+            surface: '#f8f9fa',
+            'on-surface': '#202124',
+          },
+          fontFamily: {
+            sans: ['Roboto', 'Google Sans', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'md-1': '0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
+            'md-2': '0 1px 3px 0 rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15)',
+            'md-3': '0 4px 4px 0 rgba(60,64,67,.3), 0 8px 12px 6px rgba(60,64,67,.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #1967d2;
+    }
+    body { font-family: 'Roboto', sans-serif; background: #f8f9fa; color: #202124; }
+    .nav-item.active { background: #e8f0fe; color: #1967d2; font-weight: 500; }
+    .nav-item.active .material-icons, .nav-item.active .material-icons-outlined { color: #1967d2; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15); }
+    .btn-primary { background: #1a73e8; color: white; border-radius: 24px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary:hover { background: #1967d2; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    .btn-outline { border: 1px solid #dadce0; border-radius: 24px; font-weight: 500; }
+    .btn-outline:hover { background: #f1f3f4; }
+    .sidebar { width: 256px; transition: transform 0.3s; }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; height: 100%; }
+      .sidebar.open { transform: translateX(0); }
+    }
+    .view { display: none; }
+    .view.active { display: block; }
+    .calendar-day { min-height: 80px; }
+    .calendar-day.has-event { background: #e8f0fe; }
+    .file-item:hover { background: #f1f3f4; }
+    .chip { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; }
+    .progress-ring { transform: rotate(-90deg); }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #bdc1c6; }
+  </style>
+</head>
+<body class="min-h-screen flex">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar bg-white border-r border-gray-200 flex flex-col fixed md:relative h-full z-40">
+    <div class="p-4 flex items-center gap-3 border-b border-gray-100">
+      <div class="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white">
+        <span class="material-icons">school</span>
+      </div>
+      <div>
+        <h1 class="font-medium text-lg leading-tight">CapaciHub</h1>
+        <p class="text-xs text-gray-500">Gestión & Auditoría</p>
+      </div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+      <button onclick="showView('dashboard')" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">dashboard</span>
+        Dashboard
+      </button>
+      <button onclick="showView('cronograma')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">calendar_month</span>
+        Cronograma
+      </button>
+      <button onclick="showView('capacitaciones')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">menu_book</span>
+        Capacitaciones
+      </button>
+      <button onclick="showView('almacenamiento')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">folder</span>
+        Almacenamiento
+      </button>
+      <button onclick="showView('examenes')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">quiz</span>
+        Exámenes
+      </button>
+      <button onclick="showView('conocimiento')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">auto_stories</span>
+        Base de Conocimiento
+      </button>
+      <button onclick="showView('reportes')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left hover:bg-gray-100 transition">
+        <span class="material-icons-outlined text-gray-600">assessment</span>
+        Reportes / Auditoría
+      </button>
+    </nav>
+    <div class="p-4 border-t border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">A</div>
+        <div class="text-sm">
+          <p class="font-medium">Admin</p>
+          <p class="text-xs text-gray-500">admin@empresa.com</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col min-h-screen md:ml-0">
+    <!-- Top bar -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-full hover:bg-gray-100">
+          <span class="material-icons">menu</span>
+        </button>
+        <div class="relative hidden sm:block">
+          <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+          <input type="text" placeholder="Buscar capacitaciones, archivos, exámenes..." class="pl-10 pr-4 py-2 bg-gray-100 rounded-full w-80 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition">
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="p-2 rounded-full hover:bg-gray-100 relative">
+          <span class="material-icons-outlined text-gray-600">notifications</span>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button class="btn-primary px-5 py-2 text-sm flex items-center gap-2">
+          <span class="material-icons text-sm">add</span>
+          Nuevo
+        </button>
+      </div>
+    </header>
+
+    <!-- Views container -->
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto">
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="view active space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Dashboard</h2>
+            <p class="text-gray-500 text-sm mt-1">Resumen general · Listo para auditoría 2026</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn-outline px-4 py-2 text-sm">Exportar resumen</button>
+            <button class="btn-primary px-4 py-2 text-sm">Preparar auditoría</button>
+          </div>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Cumplimiento general</p>
+                <p class="text-3xl font-medium mt-1 text-primary-700">87%</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+                <span class="material-icons text-green-600">verified</span>
+              </div>
+            </div>
+            <div class="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-green-500 rounded-full" style="width:87%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">+4% vs mes anterior</p>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Capacitaciones del año</p>
+                <p class="text-3xl font-medium mt-1">42</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center">
+                <span class="material-icons text-primary-600">event</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">12 pendientes · 8 en curso</p>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Empleados capacitados</p>
+                <p class="text-3xl font-medium mt-1">318</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+                <span class="material-icons text-purple-600">groups</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">de 365 totales</p>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Exámenes pendientes</p>
+                <p class="text-3xl font-medium mt-1 text-orange-600">14</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
+                <span class="material-icons text-orange-600">quiz</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4">Revisar antes de cierre</p>
+          </div>
+        </div>
+
+        <!-- Two columns -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-4">
+            <div class="card p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-medium">Próximas capacitaciones</h3>
+                <button onclick="showView('cronograma')" class="text-primary-600 text-sm font-medium hover:underline">Ver cronograma</button>
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50">
+                  <div class="w-12 h-12 rounded-lg bg-blue-100 flex flex-col items-center justify-center text-primary-700">
+                    <span class="text-xs font-medium">SEP</span>
+                    <span class="text-lg font-medium leading-none">12</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium text-sm">Seguridad Industrial - NR-12</p>
+                    <p class="text-xs text-gray-500">Sala de capacitación · 09:00 - 12:00</p>
+                  </div>
+                  <span class="chip bg-blue-50 text-blue-700">Programada</span>
+                </div>
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50">
+                  <div class="w-12 h-12 rounded-lg bg-green-100 flex flex-col items-center justify-center text-green-700">
+                    <span class="text-xs font-medium">SEP</span>
+                    <span class="text-lg font-medium leading-none">18</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium text-sm">Prevención de Riesgos Psicosociales</p>
+                    <p class="text-xs text-gray-500">Virtual · Teams · 14:00</p>
+                  </div>
+                  <span class="chip bg-green-50 text-green-700">Confirmada</span>
+                </div>
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50">
+                  <div class="w-12 h-12 rounded-lg bg-purple-100 flex flex-col items-center justify-center text-purple-700">
+                    <span class="text-xs font-medium">OCT</span>
+                    <span class="text-lg font-medium leading-none">05</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium text-sm">Actualización ISO 45001</p>
+                    <p class="text-xs text-gray-500">Auditorio · 08:30 - 17:00</p>
+                  </div>
+                  <span class="chip bg-yellow-50 text-yellow-800">Pendiente material</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <h3 class="font-medium mb-4">Actividad reciente</h3>
+              <div class="space-y-4">
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                    <span class="material-icons text-primary-600 text-sm">upload_file</span>
+                  </div>
+                  <div>
+                    <p class="text-sm"><span class="font-medium">María López</span> subió material de “Brigadas de Emergencia”</p>
+                    <p class="text-xs text-gray-500">Hace 2 horas · Almacenamiento</p>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                    <span class="material-icons text-green-600 text-sm">check_circle</span>
+                  </div>
+                  <div>
+                    <p class="text-sm"><span class="font-medium">12 colaboradores</span> completaron el examen de Primeros Auxilios</p>
+                    <p class="text-xs text-gray-500">Ayer · Exámenes</p>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                    <span class="material-icons text-orange-600 text-sm">edit_calendar</span>
+                  </div>
+                  <div>
+                    <p class="text-sm">Se creó el <span class="font-medium">Cronograma 2027</span> (borrador)</p>
+                    <p class="text-xs text-gray-500">Hace 3 días · Cronograma</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="card p-5">
+              <h3 class="font-medium mb-3">Estado de auditoría</h3>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span>Evidencias de asistencia</span>
+                  <span class="text-green-600 font-medium">Listo</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>Materiales actualizados</span>
+                  <span class="text-green-600 font-medium">Listo</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>Exámenes y resultados</span>
+                  <span class="text-yellow-600 font-medium">14 pendientes</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>Certificados emitidos</span>
+                  <span class="text-green-600 font-medium">92%</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>Cronograma firmado</span>
+                  <span class="text-red-600 font-medium">Falta</span>
+                </div>
+              </div>
+              <button class="w-full mt-4 btn-outline py-2 text-sm">Ver checklist completo</button>
+            </div>
+
+            <div class="card p-5">
+              <h3 class="font-medium mb-3">Accesos rápidos</h3>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="showView('cronograma')" class="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-gray-50 text-sm">
+                  <span class="material-icons text-primary-600">calendar_today</span>
+                  Nuevo evento
+                </button>
+                <button onclick="showView('examenes')" class="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-gray-50 text-sm">
+                  <span class="material-icons text-primary-600">add_circle</span>
+                  Crear examen
+                </button>
+                <button onclick="showView('almacenamiento')" class="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-gray-50 text-sm">
+                  <span class="material-icons text-primary-600">cloud_upload</span>
+                  Subir archivo
+                </button>
+                <button onclick="showView('reportes')" class="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-gray-50 text-sm">
+                  <span class="material-icons text-primary-600">picture_as_pdf</span>
+                  Generar PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRONOGRAMA -->
+      <div id="view-cronograma" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Cronograma de Capacitaciones</h2>
+            <p class="text-gray-500 text-sm mt-1">Planifica el año actual y el siguiente · Todo listo para auditoría</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <select id="yearSelect" class="btn-outline px-4 py-2 text-sm appearance-none pr-8" onchange="renderCalendar()">
+              <option value="2026">2026</option>
+              <option value="2027">2027 (próximo año)</option>
+            </select>
+            <button class="btn-outline px-4 py-2 text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">file_copy</span> Duplicar año
+            </button>
+            <button onclick="openModal('modalNuevaCap')" class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">add</span> Nueva capacitación
+            </button>
+          </div>
+        </div>
+
+        <!-- Month navigation -->
+        <div class="card p-4">
+          <div class="flex items-center justify-between mb-4">
+            <button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100"><span class="material-icons">chevron_left</span></button>
+            <h3 id="monthTitle" class="font-medium text-lg">Agosto 2026</h3>
+            <button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100"><span class="material-icons">chevron_right</span></button>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500 mb-2">
+            <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+          </div>
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+        <!-- List view of year events -->
+        <div class="card p-5">
+          <h3 class="font-medium mb-4">Todas las capacitaciones del año</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 border-b">
+                  <th class="pb-3 font-medium">Fecha</th>
+                  <th class="pb-3 font-medium">Capacitación</th>
+                  <th class="pb-3 font-medium">Tipo</th>
+                  <th class="pb-3 font-medium">Estado</th>
+                  <th class="pb-3 font-medium">Asistentes</th>
+                  <th class="pb-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody id="cronogramaTable">
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                  <td class="py-3">12 Sep 2026</td>
+                  <td class="py-3 font-medium">Seguridad Industrial - NR-12</td>
+                  <td class="py-3"><span class="chip bg-blue-50 text-blue-700">Presencial</span></td>
+                  <td class="py-3"><span class="chip bg-green-50 text-green-700">Programada</span></td>
+                  <td class="py-3">28 / 30</td>
+                  <td class="py-3 text-right"><button class="text-primary-600 text-sm">Editar</button></td>
+                </tr>
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                  <td class="py-3">18 Sep 2026</td>
+                  <td class="py-3 font-medium">Prevención Riesgos Psicosociales</td>
+                  <td class="py-3"><span class="chip bg-purple-50 text-purple-700">Virtual</span></td>
+                  <td class="py-3"><span class="chip bg-green-50 text-green-700">Confirmada</span></td>
+                  <td class="py-3">45 / 50</td>
+                  <td class="py-3 text-right"><button class="text-primary-600 text-sm">Editar</button></td>
+                </tr>
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                  <td class="py-3">05 Oct 2026</td>
+                  <td class="py-3 font-medium">Actualización ISO 45001</td>
+                  <td class="py-3"><span class="chip bg-blue-50 text-blue-700">Presencial</span></td>
+                  <td class="py-3"><span class="chip bg-yellow-50 text-yellow-800">Pendiente</span></td>
+                  <td class="py-3">0 / 25</td>
+                  <td class="py-3 text-right"><button class="text-primary-600 text-sm">Editar</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAPACITACIONES -->
+      <div id="view-capacitaciones" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Catálogo de Capacitaciones</h2>
+            <p class="text-gray-500 text-sm mt-1">Gestiona temas, materiales, instructores y versiones</p>
+          </div>
+          <button class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+            <span class="material-icons text-sm">add</span> Nueva capacitación
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <!-- Card example -->
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <span class="chip bg-red-50 text-red-700">Obligatoria</span>
+              <span class="material-icons-outlined text-gray-400 text-xl">more_vert</span>
+            </div>
+            <h3 class="font-medium text-lg mb-1">Seguridad Industrial - NR-12</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">Capacitación sobre máquinas y equipos, protecciones y procedimientos seguros según norma.</p>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">schedule</span> 4h</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">person</span> Ing. Pérez</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">folder</span> 8 archivos</span>
+            </div>
+            <div class="mt-4 pt-3 border-t flex justify-between items-center">
+              <span class="text-xs text-gray-500">Última: 12 Sep 2026</span>
+              <button class="text-primary-600 text-sm font-medium">Abrir</button>
+            </div>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <span class="chip bg-blue-50 text-blue-700">Recurrente</span>
+              <span class="material-icons-outlined text-gray-400 text-xl">more_vert</span>
+            </div>
+            <h3 class="font-medium text-lg mb-1">Primeros Auxilios</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">RCP, hemorragias, quemaduras y actuación ante emergencias médicas en el trabajo.</p>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">schedule</span> 8h</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">person</span> Dra. Ruiz</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">folder</span> 12 archivos</span>
+            </div>
+            <div class="mt-4 pt-3 border-t flex justify-between items-center">
+              <span class="text-xs text-gray-500">Última: 22 Ago 2026</span>
+              <button class="text-primary-600 text-sm font-medium">Abrir</button>
+            </div>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <span class="chip bg-green-50 text-green-700">ISO</span>
+              <span class="material-icons-outlined text-gray-400 text-xl">more_vert</span>
+            </div>
+            <h3 class="font-medium text-lg mb-1">ISO 45001:2018</h3>
+            <p class="text-sm text-gray-500 mb-4 line-clamp-2">Sistema de gestión de seguridad y salud en el trabajo. Actualización anual.</p>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">schedule</span> 16h</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">person</span> Consultor externo</span>
+              <span class="flex items-center gap-1"><span class="material-icons text-sm">folder</span> 15 archivos</span>
+            </div>
+            <div class="mt-4 pt-3 border-t flex justify-between items-center">
+              <span class="text-xs text-gray-500">Próxima: 05 Oct 2026</span>
+              <button class="text-primary-600 text-sm font-medium">Abrir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALMACENAMIENTO (OneDrive-like) -->
+      <div id="view-almacenamiento" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Almacenamiento</h2>
+            <p class="text-gray-500 text-sm mt-1">Organizado por año → tema → tipo de documento · Fin del caos del Explorador</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn-outline px-4 py-2 text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">create_new_folder</span> Nueva carpeta
+            </button>
+            <button class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">upload</span> Subir archivos
+            </button>
+          </div>
+        </div>
+
+        <!-- Breadcrumb + view toggle -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-sm">
+            <button class="text-primary-600 hover:underline">Raíz</button>
+            <span class="material-icons text-gray-400 text-sm">chevron_right</span>
+            <button class="text-primary-600 hover:underline">2026</button>
+            <span class="material-icons text-gray-400 text-sm">chevron_right</span>
+            <span class="text-gray-700 font-medium">Seguridad Industrial</span>
+          </div>
+          <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button class="p-1.5 rounded bg-white shadow-sm"><span class="material-icons text-sm">grid_view</span></button>
+            <button class="p-1.5 rounded"><span class="material-icons text-sm text-gray-500">view_list</span></button>
+          </div>
+        </div>
+
+        <!-- Folder structure suggestion + files -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div class="lg:col-span-1 card p-4">
+            <h4 class="text-sm font-medium text-gray-500 mb-3">Estructura recomendada</h4>
+            <ul class="space-y-1 text-sm">
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> 2026
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer pl-6">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> Seguridad Industrial
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded bg-primary-50 text-primary-700 pl-10">
+                <span class="material-icons text-primary-600 text-lg">folder_open</span> Materiales
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer pl-10">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> Asistencias
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer pl-10">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> Exámenes
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer pl-10">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> Certificados
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> 2027
+              </li>
+              <li class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 cursor-pointer">
+                <span class="material-icons text-yellow-600 text-lg">folder</span> Políticas & Procedimientos
+              </li>
+            </ul>
+          </div>
+          <div class="lg:col-span-3">
+            <div class="card overflow-hidden">
+              <div class="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+                <div class="col-span-6">Nombre</div>
+                <div class="col-span-2">Modificado</div>
+                <div class="col-span-2">Tamaño</div>
+                <div class="col-span-2">Tipo</div>
+              </div>
+              <div class="divide-y">
+                <div class="grid grid-cols-12 gap-2 px-4 py-3 file-item items-center cursor-pointer">
+                  <div class="col-span-6 flex items-center gap-3">
+                    <span class="material-icons text-red-500">picture_as_pdf</span>
+                    <span class="text-sm font-medium truncate">Manual_NR12_v3.pdf</span>
+                  </div>
+                  <div class="col-span-2 text-sm text-gray-500">20 Ago 2026</div>
+                  <div class="col-span-2 text-sm text-gray-500">2.4 MB</div>
+                  <div class="col-span-2 text-sm text-gray-500">PDF</div>
+                </div>
+                <div class="grid grid-cols-12 gap-2 px-4 py-3 file-item items-center cursor-pointer">
+                  <div class="col-span-6 flex items-center gap-3">
+                    <span class="material-icons text-blue-500">description</span>
+                    <span class="text-sm font-medium truncate">Presentación_Seguridad.pptx</span>
+                  </div>
+                  <div class="col-span-2 text-sm text-gray-500">18 Ago 2026</div>
+                  <div class="col-span-2 text-sm text-gray-500">8.1 MB</div>
+                  <div class="col-span-2 text-sm text-gray-500">PPTX</div>
+                </div>
+                <div class="grid grid-cols-12 gap-2 px-4 py-3 file-item items-center cursor-pointer">
+                  <div class="col-span-6 flex items-center gap-3">
+                    <span class="material-icons text-green-600">table_chart</span>
+                    <span class="text-sm font-medium truncate">Lista_Asistencia_12Sep.xlsx</span>
+                  </div>
+                  <div class="col-span-2 text-sm text-gray-500">12 Sep 2026</div>
+                  <div class="col-span-2 text-sm text-gray-500">45 KB</div>
+                  <div class="col-span-2 text-sm text-gray-500">XLSX</div>
+                </div>
+                <div class="grid grid-cols-12 gap-2 px-4 py-3 file-item items-center cursor-pointer">
+                  <div class="col-span-6 flex items-center gap-3">
+                    <span class="material-icons text-orange-500">image</span>
+                    <span class="text-sm font-medium truncate">Fotos_Capacitacion.zip</span>
+                  </div>
+                  <div class="col-span-2 text-sm text-gray-500">12 Sep 2026</div>
+                  <div class="col-span-2 text-sm text-gray-500">15.2 MB</div>
+                  <div class="col-span-2 text-sm text-gray-500">ZIP</div>
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 flex items-center gap-1">
+              <span class="material-icons text-sm">info</span>
+              Tip: Arrastra archivos aquí o usa la estructura por año/tema para que la auditoría sea instantánea.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXÁMENES (Forms-like) -->
+      <div id="view-examenes" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Exámenes y Evaluaciones</h2>
+            <p class="text-gray-500 text-sm mt-1">Crea como Google Forms · Asigna a capacitaciones · Resultados automáticos</p>
+          </div>
+          <button onclick="openModal('modalNuevoExamen')" class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+            <span class="material-icons text-sm">add</span> Crear examen
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="chip bg-green-50 text-green-700 mb-2">Activo</span>
+                <h3 class="font-medium text-lg">Evaluación NR-12</h3>
+                <p class="text-sm text-gray-500 mt-1">10 preguntas · Nota mínima 70%</p>
+              </div>
+              <span class="material-icons-outlined text-gray-400">more_vert</span>
+            </div>
+            <div class="mt-4 flex items-center gap-4 text-sm text-gray-600">
+              <span>42 respuestas</span>
+              <span>·</span>
+              <span>Promedio 82%</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button class="btn-outline px-3 py-1.5 text-sm">Editar</button>
+              <button class="btn-outline px-3 py-1.5 text-sm">Resultados</button>
+              <button class="btn-primary px-3 py-1.5 text-sm">Compartir</button>
+            </div>
+          </div>
+          <div class="card p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="chip bg-yellow-50 text-yellow-800 mb-2">Borrador</span>
+                <h3 class="font-medium text-lg">Quiz ISO 45001</h3>
+                <p class="text-sm text-gray-500 mt-1">15 preguntas · Nota mínima 80%</p>
+              </div>
+              <span class="material-icons-outlined text-gray-400">more_vert</span>
+            </div>
+            <div class="mt-4 flex items-center gap-4 text-sm text-gray-600">
+              <span>0 respuestas</span>
+              <span>·</span>
+              <span>—</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button class="btn-outline px-3 py-1.5 text-sm">Editar</button>
+              <button class="btn-primary px-3 py-1.5 text-sm">Publicar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Builder preview -->
+        <div class="card p-6">
+          <h3 class="font-medium mb-4 flex items-center gap-2">
+            <span class="material-icons text-primary-600">edit_note</span>
+            Constructor de examen (vista previa)
+          </h3>
+          <div class="space-y-6 max-w-2xl">
+            <div class="p-4 border border-gray-200 rounded-xl">
+              <label class="block text-sm font-medium mb-2">1. ¿Cuál es el objetivo principal de la NR-12?</label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-2 text-sm"><input type="radio" name="q1" class="accent-primary-600"> Proteger solo a operadores</label>
+                <label class="flex items-center gap-2 text-sm"><input type="radio" name="q1" class="accent-primary-600"> Garantizar la seguridad en el uso de máquinas y equipos</label>
+                <label class="flex items-center gap-2 text-sm"><input type="radio" name="q1" class="accent-primary-600"> Reducir costos de mantenimiento</label>
+              </div>
+            </div>
+            <div class="p-4 border border-gray-200 rounded-xl">
+              <label class="block text-sm font-medium mb-2">2. Antes de operar una máquina se debe verificar:</label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="accent-primary-600"> Protecciones fijas y móviles</label>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="accent-primary-600"> Dispositivos de parada de emergencia</label>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="accent-primary-600"> Solo el estado de la pintura</label>
+              </div>
+            </div>
+            <button class="btn-outline px-4 py-2 text-sm flex items-center gap-1">
+              <span class="material-icons text-sm">add</span> Agregar pregunta
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BASE DE CONOCIMIENTO (Obsidian-like) -->
+      <div id="view-conocimiento" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Base de Conocimiento</h2>
+            <p class="text-gray-500 text-sm mt-1">Estilo Obsidian · Notas enlazadas · Procedimientos siempre actualizados</p>
+          </div>
+          <button class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+            <span class="material-icons text-sm">note_add</span> Nueva nota
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 card p-4">
+            <input type="text" placeholder="Buscar notas..." class="w-full px-3 py-2 bg-gray-100 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <ul class="space-y-1 text-sm">
+              <li class="px-3 py-2 rounded-lg bg-primary-50 text-primary-700 font-medium cursor-pointer">Procedimiento de Emergencia</li>
+              <li class="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">Matriz de Capacitaciones</li>
+              <li class="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">Checklist Auditoría Interna</li>
+              <li class="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">Roles y Responsabilidades SST</li>
+              <li class="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">[[NR-12]] Resumen</li>
+              <li class="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">Lecciones Aprendidas 2025</li>
+            </ul>
+          </div>
+          <div class="lg:col-span-2 card p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-xl font-medium">Procedimiento de Emergencia</h3>
+              <div class="flex gap-2">
+                <button class="p-2 rounded-full hover:bg-gray-100"><span class="material-icons-outlined text-gray-600">edit</span></button>
+                <button class="p-2 rounded-full hover:bg-gray-100"><span class="material-icons-outlined text-gray-600">link</span></button>
+              </div>
+            </div>
+            <div class="prose prose-sm max-w-none text-gray-700 space-y-3">
+              <p>Este procedimiento aplica a todas las áreas de la planta. Está vinculado a la capacitación <span class="text-primary-600 font-medium">[[Brigadas de Emergencia]]</span> y al examen correspondiente.</p>
+              <h4 class="font-medium text-base mt-4">1. Activación de alarma</h4>
+              <p>Cualquier colaborador que detecte una situación de riesgo debe activar la alarma más cercana y notificar al Coordinador de Brigada.</p>
+              <h4 class="font-medium text-base mt-4">2. Puntos de encuentro</h4>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>Zona A → Estacionamiento norte</li>
+                <li>Zona B → Patio de carga</li>
+                <li>Oficinas → Frente al comedor</li>
+              </ul>
+              <p class="text-sm text-gray-500 mt-6 pt-4 border-t">Última actualización: 15 Ago 2026 · Versión 2.1 · Enlazado a 4 capacitaciones</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTES / AUDITORÍA -->
+      <div id="view-reportes" class="view space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-medium">Reportes y Preparación de Auditoría</h2>
+            <p class="text-gray-500 text-sm mt-1">Todo a un clic · Evidencias organizadas · Exporta PDF / Excel</p>
+          </div>
+          <button class="btn-primary px-4 py-2 text-sm flex items-center gap-1">
+            <span class="material-icons text-sm">download</span> Paquete completo de auditoría
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-red-600">picture_as_pdf</span>
+            </div>
+            <h3 class="font-medium">Cronograma anual firmado</h3>
+            <p class="text-sm text-gray-500 mt-1">PDF con todas las fechas, firmas y estados</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-green-600">assignment_turned_in</span>
+            </div>
+            <h3 class="font-medium">Matriz de cumplimiento</h3>
+            <p class="text-sm text-gray-500 mt-1">Por persona, área y capacitación obligatoria</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-blue-600">quiz</span>
+            </div>
+            <h3 class="font-medium">Resultados de exámenes</h3>
+            <p class="text-sm text-gray-500 mt-1">Promedios, reprobados y evidencias</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-purple-600">folder_shared</span>
+            </div>
+            <h3 class="font-medium">Índice de evidencias</h3>
+            <p class="text-sm text-gray-500 mt-1">Lista de todos los archivos con ubicación</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-orange-600">history</span>
+            </div>
+            <h3 class="font-medium">Historial de versiones</h3>
+            <p class="text-sm text-gray-500 mt-1">Qué material se usó en cada fecha</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+          <div class="card p-5 hover:shadow-md-2 transition cursor-pointer">
+            <div class="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center mb-3">
+              <span class="material-icons text-teal-600">verified_user</span>
+            </div>
+            <h3 class="font-medium">Certificados emitidos</h3>
+            <p class="text-sm text-gray-500 mt-1">Listado + archivos PDF firmados</p>
+            <button class="mt-4 text-primary-600 text-sm font-medium">Generar →</button>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="font-medium mb-3">Checklist de auditoría de fin de año</h3>
+          <div class="space-y-2">
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" checked class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Cronograma del año actual aprobado y firmado</span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" checked class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Cronograma del próximo año elaborado (borrador o definitivo)</span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Todas las listas de asistencia digitalizadas y archivadas</span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" checked class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Materiales de capacitación con control de versiones</span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Resultados de evaluaciones disponibles y analizados</span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+              <input type="checkbox" class="w-5 h-5 accent-primary-600 rounded">
+              <span class="text-sm">Certificados emitidos y entregados (o disponibles)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Nueva Capacitación (simple) -->
+  <div id="modalNuevaCap" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-md-3 w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-medium">Nueva capacitación en cronograma</h3>
+        <button onclick="closeModal('modalNuevaCap')" class="p-1 rounded-full hover:bg-gray-100"><span class="material-icons">close</span></button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Nombre</label>
+          <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej. Seguridad Industrial NR-12">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Fecha</label>
+            <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Hora</label>
+            <input type="time" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Tipo</label>
+          <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <option>Presencial</option>
+            <option>Virtual</option>
+            <option>Híbrida</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeModal('modalNuevaCap')" class="btn-outline px-4 py-2 text-sm">Cancelar</button>
+          <button class="btn-primary px-4 py-2 text-sm">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Examen -->
+  <div id="modalNuevoExamen" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-md-3 w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-medium">Crear nuevo examen</h3>
+        <button onclick="closeModal('modalNuevoExamen')" class="p-1 rounded-full hover:bg-gray-100"><span class="material-icons">close</span></button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Título del examen</label>
+          <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej. Evaluación NR-12">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Vincular a capacitación</label>
+          <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <option>Seguridad Industrial - NR-12</option>
+            <option>Primeros Auxilios</option>
+            <option>ISO 45001</option>
+            <option>(Ninguna / independiente)</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Nota mínima (%)</label>
+            <input type="number" value="70" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Tiempo límite (min)</label>
+            <input type="number" value="30" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeModal('modalNuevoExamen')" class="btn-outline px-4 py-2 text-sm">Cancelar</button>
+          <button class="btn-primary px-4 py-2 text-sm">Crear y editar preguntas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation
+    function showView(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + id).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      // Close mobile sidebar
+      document.getElementById('sidebar').classList.remove('open');
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    // Simple calendar
+    let currentMonth = 7; // August = 7 (0-indexed)
+    let currentYear = 2026;
+
+    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    // Sample events
+    const events = {
+      '2026-8-12': [{ title: 'NR-12', color: 'bg-blue-100' }],
+      '2026-8-22': [{ title: 'Primeros Auxilios', color: 'bg-green-100' }],
+      '2026-9-12': [{ title: 'NR-12', color: 'bg-blue-100' }],
+      '2026-9-18': [{ title: 'Riesgos Psico', color: 'bg-purple-100' }],
+      '2026-10-5': [{ title: 'ISO 45001', color: 'bg-yellow-100' }],
+    };
+
+    function renderCalendar() {
+      const year = parseInt(document.getElementById('yearSelect')?.value || currentYear);
+      currentYear = year;
+      const grid = document.getElementById('calendarGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      document.getElementById('monthTitle').textContent = monthNames[currentMonth] + ' ' + currentYear;
+
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      let startDay = firstDay.getDay(); // 0=Sun
+      startDay = startDay === 0 ? 6 : startDay - 1; // Make Monday=0
+
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      // Empty cells
+      for (let i = 0; i < startDay; i++) {
+        grid.innerHTML += `<div class="calendar-day p-1 border border-transparent"></div>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${currentYear}-${currentMonth+1}-${d}`;
+        const dayEvents = events[key] || [];
+        const hasEvent = dayEvents.length > 0;
+        let eventsHtml = dayEvents.map(e => `<div class="text-[10px] px-1 rounded truncate ${e.color}">${e.title}</div>`).join('');
+        grid.innerHTML += `
+          <div class="calendar-day p-1 border border-gray-100 rounded-lg ${hasEvent ? 'has-event' : ''} hover:bg-gray-50 cursor-pointer">
+            <div class="text-sm font-medium ${hasEvent ? 'text-primary-700' : ''}">${d}</div>
+            ${eventsHtml}
+          </div>`;
+      }
+    }
+
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      document.getElementById('yearSelect').value = currentYear;
+      renderCalendar();
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCalendar();
+    });
+  </script>
+</body>
+</html>
