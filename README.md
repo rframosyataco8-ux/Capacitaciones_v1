@@ -1,52 +1,37 @@
 # CapaciHub
 
-Sistema de gestión de capacitaciones (vault + cronograma + archivos + exámenes + auditoría).
+Sistema **real** de gestión de capacitaciones (datos locales, no solo maqueta).
 
-## Qué es real (ya no es solo prototipo)
+## Qué hace de verdad
 
-- **Datos persistentes** en el navegador (IndexedDB): se guardan al cerrar y reabrir.
-- **Cronograma anual**: crear, eliminar, cambiar de año, duplicar al año siguiente.
-- **Almacenamiento de archivos**: subir PDF, PPT, Word, Excel, imágenes; carpetas; descargar.
-- **Notas tipo Obsidian**: árbol, enlaces `[[wiki]]`, backlinks, tags, propiedades.
-- **Grafo** generado a partir de notas, eventos y exámenes reales.
-- **Exámenes**: alta básica con metadatos.
-- **Auditoría**: resumen + exportar JSON del año.
+| Módulo | Función |
+|--------|--------|
+| **Cronograma** | Crear capacitaciones del año, cambiar año, **duplicar al siguiente** |
+| **Archivos** | Subir/arrastrar PDF, PPT, Word, Excel, imágenes; carpetas; descargar |
+| **Vault** | Notas con `[[wiki]]`, tags, propiedades, backlinks |
+| **Grafo** | Red desde notas / eventos / exámenes reales |
+| **Exámenes** | Alta de evaluaciones |
+| **Auditoría** | Resumen + **exportar JSON** del año |
+
+Todo se guarda en el **navegador (IndexedDB)** y persiste al cerrar.
 
 ## Cómo abrirlo
 
-Los módulos ES (`import`) **no funcionan** abriendo el HTML con doble clic (`file://`). Usa un servidor local:
-
 ```bash
 cd CapaciHub
-npx --yes serve .
+git pull origin main
 ```
 
-O en VS Code: extensión **Live Server** → Open with Live Server.
+Abre `index.html` en **Chrome, Edge o Firefox** (navegador reciente).
 
-Luego entra a la URL que indique (ej. `http://localhost:3000`).
+Verás un momento “Cargando CapaciHub…” y luego la app completa.
 
-## Uso rápido
+## Flujo en la empresa
 
-1. **Cronograma** (icono ▦): `+ Capacitación`, elige año, `Duplicar año → siguiente`.
-2. **Archivos** (📁): sube o arrastra PPT/PDF/Word; crea carpetas.
-3. **Vault** (☰): notas y enlaces; `+` nueva nota; **Editar** para cambiar el markdown.
-4. **Grafo** (◈): red de relaciones.
-5. **Auditoría** (✓): exporta JSON para el cierre de año.
+1. **Cronograma** → `+ Capacitación` por cada fecha del año.
+2. Plan del próximo año → `Duplicar año → siguiente`.
+3. **Archivos** → PPT, PDF, asistencias, fotos.
+4. **Vault** → procedimientos y matrices enlazados.
+5. **Auditoría** → exporta JSON cuando pidan evidencias.
 
-## Estructura
-
-```
-CapaciHub/
-  index.html
-  css/app.css
-  js/db.js      # IndexedDB
-  js/app.js     # UI + lógica
-  README.md
-```
-
-## Siguiente nivel (cuando quieras)
-
-- Backend + multiusuario
-- Editor markdown completo en pantalla
-- Constructor de exámenes tipo Forms
-- Sincronización OneDrive / SharePoint
+Repo: https://github.com/rframosyataco8-ux/CapaciHub
