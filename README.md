@@ -1,46 +1,52 @@
 # CapaciHub
 
-**Vault de Capacitaciones** — Diseño Google Material + estructura Obsidian.
+Sistema de gestión de capacitaciones (vault + cronograma + archivos + exámenes + auditoría).
 
-## Rediseño v2
+## Qué es real (ya no es solo prototipo)
 
-- **Vault** como centro: árbol de archivos, notas Markdown, propiedades y backlinks (estilo Obsidian)
-- Colores y tipografía Google (Inter + azul #1a73e8)
-- Sidebar limpia con carpetas por año / tema
-- Cronograma, Exámenes y Auditoría integrados
-- Sin ruido visual, profesional
+- **Datos persistentes** en el navegador (IndexedDB): se guardan al cerrar y reabrir.
+- **Cronograma anual**: crear, eliminar, cambiar de año, duplicar al año siguiente.
+- **Almacenamiento de archivos**: subir PDF, PPT, Word, Excel, imágenes; carpetas; descargar.
+- **Notas tipo Obsidian**: árbol, enlaces `[[wiki]]`, backlinks, tags, propiedades.
+- **Grafo** generado a partir de notas, eventos y exámenes reales.
+- **Exámenes**: alta básica con metadatos.
+- **Auditoría**: resumen + exportar JSON del año.
 
-## Uso
+## Cómo abrirlo
+
+Los módulos ES (`import`) **no funcionan** abriendo el HTML con doble clic (`file://`). Usa un servidor local:
 
 ```bash
-git clone https://github.com/rframosyataco8-ux/CapaciHub.git
 cd CapaciHub
-# Abre index.html en el navegador
+npx --yes serve .
 ```
 
-Si ya lo clonaste:
-```bash
-cd CapaciHub
-git pull
+O en VS Code: extensión **Live Server** → Open with Live Server.
+
+Luego entra a la URL que indique (ej. `http://localhost:3000`).
+
+## Uso rápido
+
+1. **Cronograma** (icono ▦): `+ Capacitación`, elige año, `Duplicar año → siguiente`.
+2. **Archivos** (📁): sube o arrastra PPT/PDF/Word; crea carpetas.
+3. **Vault** (☰): notas y enlaces; `+` nueva nota; **Editar** para cambiar el markdown.
+4. **Grafo** (◈): red de relaciones.
+5. **Auditoría** (✓): exporta JSON para el cierre de año.
+
+## Estructura
+
+```
+CapaciHub/
+  index.html
+  css/app.css
+  js/db.js      # IndexedDB
+  js/app.js     # UI + lógica
+  README.md
 ```
 
-## Estructura del vault
+## Siguiente nivel (cuando quieras)
 
-```
-2026/
-  NR-12 Seguridad/
-    Procedimiento.md
-    Manual v3.md
-  Primeros Auxilios/
-  ISO 45001/
-2027/
-Base de Conocimiento/
-  Matriz de competencias.md
-  Checklist auditoría.md
-```
-
-## Próximo paso (producción)
-
-React/Next.js + Supabase o Firebase + Storage para usuarios, archivos reales y firmas.
-
-Repo: https://github.com/rframosyataco8-ux/CapaciHub
+- Backend + multiusuario
+- Editor markdown completo en pantalla
+- Constructor de exámenes tipo Forms
+- Sincronización OneDrive / SharePoint
