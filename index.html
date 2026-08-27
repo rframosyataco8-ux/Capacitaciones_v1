@@ -4,16 +4,16 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CapaciHub</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css"/>
 </head>
 <body>
   <div class="titlebar">
-    <span class="app-name">CapaciHub</span>
+    <span class="app-name">Capaci<span style="color:#1a73e8;font-weight:500">Hub</span></span>
     <div class="tabs">
       <div class="tab on"><span id="tabLabel">Procedimiento NR-12</span></div>
     </div>
-    <span class="titlebar-right">Vault · datos locales (IndexedDB)</span>
+    <span class="titlebar-right">Vault · Capacitaciones</span>
   </div>
 
   <div class="ws">
@@ -54,17 +54,17 @@
         </div>
       </div>
 
-      <div class="panel" id="p-graph" style="position:relative;background:#141414">
+      <div class="panel" id="p-graph" style="position:relative;background:#e8eaed">
         <canvas id="gc"></canvas>
         <div class="gctrl">
           <button class="on" data-mode="force" onclick="setGraphMode('force')">Fuerza</button>
           <button data-mode="orbit" onclick="setGraphMode('orbit')">Órbita</button>
         </div>
         <div class="gleg">
-          <div><span class="gd" style="background:#a88bff"></span> Capacitación / evento</div>
-          <div><span class="gd" style="background:#68cd86"></span> Procedimiento</div>
-          <div><span class="gd" style="background:#e0a050"></span> Examen</div>
-          <div><span class="gd" style="background:#c9a227"></span> Matriz / política</div>
+          <div><span class="gd" style="background:#1a73e8"></span> Capacitación / evento</div>
+          <div><span class="gd" style="background:#188038"></span> Procedimiento</div>
+          <div><span class="gd" style="background:#e37400"></span> Examen</div>
+          <div><span class="gd" style="background:#9334e6"></span> Matriz / política</div>
         </div>
         <div class="gtip" id="gTip"><h4 id="gT">—</h4><p id="gD">—</p></div>
       </div>
@@ -89,7 +89,7 @@
 
       <div class="panel" id="p-files">
         <div class="simple-page" style="padding:0;display:flex;flex-direction:column;height:100%">
-          <div style="padding:20px 24px 0">
+          <div style="padding:24px 32px 0">
             <h1>Almacenamiento</h1>
             <p class="sub">PDF, PPT, Word, Excel, imágenes · Organizado por carpetas</p>
             <div class="toolbar-row">
@@ -102,7 +102,7 @@
             <div class="files-folders" id="folderList"></div>
             <div class="files-main">
               <div class="file-drop" id="fileDrop">Arrastra archivos aquí o usa «Subir archivos»</div>
-              <div class="list-box" id="fileList" style="margin:0 16px 16px;flex:1;overflow:auto"></div>
+              <div class="list-box" id="fileList" style="margin:0 20px 20px;flex:1;overflow:auto"></div>
             </div>
           </div>
         </div>
@@ -154,7 +154,7 @@
   <div class="status">
     <span>Vault local</span><span class="s"></span>
     <span id="stNote">—</span><span class="s"></span>
-    <span style="margin-left:auto">CapaciHub · datos reales</span>
+    <span style="margin-left:auto">CapaciHub</span>
   </div>
 
   <div class="smodal" id="sModal" onclick="if(event.target===this)closeSearch()">
