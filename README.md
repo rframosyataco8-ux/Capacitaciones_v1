@@ -1,37 +1,45 @@
 # CapaciHub
 
-Sistema **real** de gestión de capacitaciones (datos locales, no solo maqueta).
+Sistema de gestión de capacitaciones — **stack moderno**.
 
-## Qué hace de verdad
+## Stack
 
-| Módulo | Función |
-|--------|--------|
-| **Cronograma** | Crear capacitaciones del año, cambiar año, **duplicar al siguiente** |
-| **Archivos** | Subir/arrastrar PDF, PPT, Word, Excel, imágenes; carpetas; descargar |
-| **Vault** | Notas con `[[wiki]]`, tags, propiedades, backlinks |
-| **Grafo** | Red desde notas / eventos / exámenes reales |
-| **Exámenes** | Alta de evaluaciones |
-| **Auditoría** | Resumen + **exportar JSON** del año |
+| Tecnología | Uso |
+|------------|-----|
+| **React 19** | UI |
+| **TypeScript** | Tipado |
+| **Vite** | Build y dev server |
+| **Tailwind CSS 4** | Estilos (Material / Google) |
+| **idb** | IndexedDB (datos locales) |
+| **lucide-react** | Iconos |
 
-Todo se guarda en el **navegador (IndexedDB)** y persiste al cerrar.
-
-## Cómo abrirlo
+## Cómo ejecutar
 
 ```bash
 cd CapaciHub
 git pull origin main
+npm install
+npm run dev
 ```
 
-Abre `index.html` en **Chrome, Edge o Firefox** (navegador reciente).
+Abre la URL que indique Vite (ej. `http://localhost:5173`).
 
-Verás un momento “Cargando CapaciHub…” y luego la app completa.
+**Importante:** ya no uses Live Server con el HTML viejo. Este proyecto se abre con `npm run dev`.
 
-## Flujo en la empresa
+## Scripts
 
-1. **Cronograma** → `+ Capacitación` por cada fecha del año.
-2. Plan del próximo año → `Duplicar año → siguiente`.
-3. **Archivos** → PPT, PDF, asistencias, fotos.
-4. **Vault** → procedimientos y matrices enlazados.
-5. **Auditoría** → exporta JSON cuando pidan evidencias.
+- `npm run dev` — desarrollo con hot reload
+- `npm run build` — producción → `dist/`
+- `npm run preview` — previsualizar build
+
+## Funciones
+
+- **Vault** — notas, `[[wiki links]]`, tags, propiedades, backlinks
+- **Cronograma** — crear/eliminar, año, duplicar al siguiente
+- **Archivos** — PDF/PPT/Word, carpetas, descargar
+- **Exámenes** — evaluaciones
+- **Auditoría** — resumen + exportar JSON
+
+Datos en el navegador (IndexedDB).
 
 Repo: https://github.com/rframosyataco8-ux/CapaciHub
