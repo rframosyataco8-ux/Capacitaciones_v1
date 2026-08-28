@@ -84,7 +84,7 @@ function getDB() {
   return dbPromise
 }
 
-const uid = (p: string) => `${p}_${crypto.randomUUID().slice(0, 8)}`
+const uid = (p: string) => p + '_' + crypto.randomUUID().slice(0, 8)
 
 export async function listNotes() {
   return (await getDB()).getAll('notes')
@@ -94,7 +94,7 @@ export async function saveNote(note: Partial<Note> & { title: string }) {
   const now = new Date().toISOString()
   const full: Note = {
     id: note.id || uid('n'),
-    path: note.path || `General/${note.title}.md`,
+    path: note.path || 'General/' + note.title + '.md',
     title: note.title,
     body: note.body ?? '',
     tags: note.tags ?? [],
@@ -161,6 +161,18 @@ export async function getFile(id: string) {
 export async function deleteFile(id: string) {
   await (await getDB()).delete('files', id)
 }
+export async function updateFile(id: string, patch: Partial<Pick<FileItem, 'name' | 'folder' | 'blob' | 'type' | 'size'>>) {
+  const db = await getDB()
+  const existing = await db.get('files', id)
+  if (!existing) throw new Error('Archivo no encontrado')
+  const updated: FileItem = {
+    ...existing,
+    ...patch,
+    size: patch.blob?.size ?? patch.size ?? existing.size,
+  }
+  await db.put('files', updated)
+  return updated
+}
 
 export async function listExams() {
   return (await getDB()).getAll('exams')
@@ -193,7 +205,7 @@ export async function seedIfEmpty() {
     id: 'n_proc',
     path: '2026/NR-12 Seguridad/Procedimiento.md',
     title: 'Procedimiento NR-12 — Seguridad en Máquinas',
-    body: `Este procedimiento aplica a todas las áreas de producción. Vinculado a [[Matriz de competencias]] y al examen NR-12.\n\n## 1. Objetivo\nGarantizar la seguridad en el uso de máquinas y equipos (NR-12).\n\n## 2. Responsabilidades\n- **Operador:** verificar protecciones al inicio de turno.\n- **Supervisor:** inspección semanal.\n- **SST:** capacitación anual y control de versiones.\n\n## 3. Evidencias\n- Lista de asistencia\n- Resultados de examen (mín. 70%)\n- Registro fotográfico\n- Versión del material`,
+    body: 'Este procedimiento aplica a todas las áreas de producción. Vinculado a [[Matriz de competencias]] y al examen NR-12.\n\n## 1. Objetivo\nGarantizar la seguridad en el uso de máquinas y equipos (NR-12).\n\n## 2. Responsabilidades\n- **Operador:** verificar protecciones al inicio de turno.\n- **Supervisor:** inspección semanal.\n- **SST:** capacitación anual y control de versiones.\n\n## 3. Evidencias\n- Lista de asistencia\n- Resultados de examen (mín. 70%)\n- Registro fotográfico\n- Versión del material',
     tags: ['obligatoria', 'nr12', 'seguridad'],
     props: { tipo: 'Obligatoria', duracion: '4h', instructor: 'Ing. Pérez', estado: 'Programada' },
   })
@@ -201,19 +213,19 @@ export async function seedIfEmpty() {
     id: 'n_matriz',
     path: 'Base de Conocimiento/Matriz de competencias.md',
     title: 'Matriz de competencias',
-    body: `Matriz puestos × capacitaciones obligatorias.\n\nRelacionado: [[Procedimiento NR-12 — Seguridad en Máquinas]] y [[Checklist auditoría]].`,
+    body: 'Matriz puestos × capacitaciones obligatorias.\n\nRelacionado: [[Procedimiento NR-12 — Seguridad en Máquinas]] y [[Checklist auditoría]].',
     tags: ['matriz', 'competencias'],
   })
   await saveNote({
     id: 'n_check',
     path: 'Base de Conocimiento/Checklist auditoría.md',
     title: 'Checklist auditoría',
-    body: `Evidencias para auditoría de fin de año.\n\n- Cronograma firmado\n- Asistencias\n- Exámenes\n- Referencia: [[Procedimiento NR-12 — Seguridad en Máquinas]]`,
+    body: 'Evidencias para auditoría de fin de año.\n\n- Cronograma firmado\n- Asistencias\n- Exámenes\n- Referencia: [[Procedimiento NR-12 — Seguridad en Máquinas]]',
     tags: ['auditoria', 'checklist'],
   })
-  await saveEvent({ id: 'e1', title: 'NR-12 Seguridad Industrial', date: `${y}-09-12`, time: '09:00', tipo: 'Presencial', estado: 'Programada', asistentes: 28, cupo: 30 })
-  await saveEvent({ id: 'e2', title: 'Riesgos Psicosociales', date: `${y}-09-18`, time: '14:00', tipo: 'Virtual', estado: 'Confirmada', asistentes: 45, cupo: 50 })
-  await saveEvent({ id: 'e3', title: 'ISO 45001', date: `${y}-10-05`, time: '08:30', tipo: 'Presencial', estado: 'Pendiente', asistentes: 0, cupo: 25 })
+  await saveEvent({ id: 'e1', title: 'NR-12 Seguridad Industrial', date: y + '-09-12', time: '09:00', tipo: 'Presencial', estado: 'Programada', asistentes: 28, cupo: 30 })
+  await saveEvent({ id: 'e2', title: 'Riesgos Psicosociales', date: y + '-09-18', time: '14:00', tipo: 'Virtual', estado: 'Confirmada', asistentes: 45, cupo: 50 })
+  await saveEvent({ id: 'e3', title: 'ISO 45001', date: y + '-10-05', time: '08:30', tipo: 'Presencial', estado: 'Pendiente', asistentes: 0, cupo: 25 })
   await saveExam({ id: 'x1', title: 'Evaluación NR-12', preguntas: 10, notaMin: 70, estado: 'Activo', respuestas: 42, promedio: 82, linkedEvent: 'e1' })
   return true
 }
