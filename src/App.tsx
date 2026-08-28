@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Calendar, CheckSquare, FileText, FolderOpen, Network,
-  Plus, Search, Upload, Download, Trash2, Copy, X,
+  Plus, Search, Upload, Download, Trash2, Copy, ChevronLeft, ChevronRight,
+  FileDown, LayoutTemplate,
 } from 'lucide-react'
 import * as db from './lib/db'
 import type { Note, Event, FileItem, Exam } from './lib/db'
 import FilePreview from './components/FilePreview'
+import GraphView from './components/GraphView'
+import ExamPanel from './components/ExamPanel'
+import ExamTake from './components/ExamTake'
+import { exportCronogramaPDF, exportCronogramaWord, yearTemplate } from './lib/exportCrono'
 
 type View = 'vault' | 'graph' | 'cronograma' | 'files' | 'examenes' | 'auditoria'
 
@@ -31,11 +36,11 @@ function Chip({ children, tone = 'blue' }: { children: React.ReactNode; tone?: s
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] bg-black/40 backdrop-blur-[2px]" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8eaed]">
           <h2 className="text-lg font-medium">{title}</h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-[#f1f3f4]"><X size={18} /></button>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">X</button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -46,7 +51,12 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 const inputCls = 'w-full h-10 px-3 rounded-lg border border-[#dadce0] text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-[#e8f0fe] bg-white'
 
 export default function App() {
+  const [examToken, setExamToken] = useState<string | null>(() => {
+    const m = location.hash.match(/^#\/exam\/([a-zA-Z0-9-]+)/)
+    return m ? m[1] : null
+  })
   const [view, setView] = useState<View>('vault')
+  const [navOpen, setNavOpen] = useState(true)
   const [notes, setNotes] = useState<Note[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [files, setFiles] = useState<FileItem[]>([])
@@ -58,11 +68,19 @@ export default function App() {
   const [searchQ, setSearchQ] = useState('')
   const [ready, setReady] = useState(false)
   const [eventModal, setEventModal] = useState(false)
-  const [examModal, setExamModal] = useState(false)
   const [noteModal, setNoteModal] = useState(false)
   const [editBody, setEditBody] = useState(false)
   const [form, setForm] = useState<Record<string, string>>({})
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null)
+
+  useEffect(() => {
+    const onHash = () => {
+      const m = location.hash.match(/^#\/exam\/([a-zA-Z0-9-]+)/)
+      setExamToken(m ? m[1] : null)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const refresh = useCallback(async () => {
     const [n, e, f, x] = await Promise.all([db.listNotes(), db.listEvents(year), db.listFiles(), db.listExams()])
@@ -75,7 +93,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); setSearchOpen(true); setSearchQ('') }
-      if (e.key === 'Escape') { setSearchOpen(false); setEventModal(false); setExamModal(false); setNoteModal(false); setEditBody(false); setPreviewFile(null) }
+      if (e.key === 'Escape') { setSearchOpen(false); setEventModal(false); setNoteModal(false); setEditBody(false); setPreviewFile(null) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -85,9 +103,9 @@ export default function App() {
   useEffect(() => { if (!currentNoteId && notes.length) setCurrentNoteId(notes[0].id) }, [notes, currentNoteId])
 
   const folders = useMemo(() => {
-    const s = new Set(files.map(f => f.folder || 'General'))
+    const s = new Set([...files.map(f => f.folder || 'General'), ...exams.map(e => e.folder || 'General')])
     return ['General', ...[...s].filter(x => x !== 'General').sort()]
-  }, [files])
+  }, [files, exams])
 
   const searchHits = useMemo(() => {
     const q = searchQ.toLowerCase()
@@ -114,14 +132,9 @@ export default function App() {
     await db.saveEvent({ title: form.title, date: form.date, time: form.time || '09:00', tipo: form.tipo || 'Presencial', estado: form.estado || 'Programada' })
     setEventModal(false); setForm({}); await refresh()
   }
-  async function addExam() {
-    if (!form.title) return
-    await db.saveExam({ title: form.title, preguntas: parseInt(form.preguntas || '10', 10), notaMin: parseInt(form.notaMin || '70', 10) })
-    setExamModal(false); setForm({}); await refresh()
-  }
   async function addNote() {
     if (!form.title) return
-    const note = await db.saveNote({ title: form.title, path: (form.folder || 'Base de Conocimiento') + '/' + form.title + '.md', body: '# ' + form.title + '\n\nEscribe aqui...\n' })
+    const note = await db.saveNote({ title: form.title, path: (form.folder || 'Base de Conocimiento') + '/' + form.title + '.md', body: '# ' + form.title + '\n\n' })
     setNoteModal(false); setForm({}); await refresh(); setCurrentNoteId(note.id); setView('vault')
   }
   async function saveNoteBody() {
@@ -133,9 +146,14 @@ export default function App() {
     const next = year + 1
     if (!confirm('Duplicar eventos de ' + year + ' a ' + next + '?')) return
     for (const e of await db.listEvents(year)) {
-      await db.saveEvent({ ...e, id: undefined as unknown as string, date: e.date.replace(String(year), String(next)), estado: 'Borrador' })
+      await db.saveEvent({ title: e.title, date: e.date.replace(String(year), String(next)), time: e.time, tipo: e.tipo, estado: 'Borrador', cupo: e.cupo })
     }
     setYear(next)
+  }
+  async function genYear() {
+    if (!confirm('Crear plantilla de 12 capacitaciones para ' + year + '?')) return
+    for (const t of yearTemplate(year, [])) await db.saveEvent(t)
+    await refresh()
   }
   async function onUpload(fileList: FileList | null) {
     if (!fileList?.length) return
@@ -146,7 +164,7 @@ export default function App() {
   }
   async function downloadFile(id: string) {
     const f = await db.getFile(id)
-    if (!f?.blob) return alert('Archivo no disponible')
+    if (!f?.blob) return
     const url = URL.createObjectURL(f.blob)
     const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); URL.revokeObjectURL(url)
   }
@@ -155,17 +173,14 @@ export default function App() {
     if (!f) return
     const name = prompt('Nuevo nombre:', f.name)
     if (!name || name === f.name) return
-    await db.updateFile(id, { name })
-    await refresh()
+    await db.updateFile(id, { name }); await refresh()
   }
   async function moveFile(id: string) {
     const f = files.find(x => x.id === id)
     if (!f) return
     const folder = prompt('Mover a carpeta:', f.folder || 'General')
     if (!folder || folder === f.folder) return
-    await db.updateFile(id, { folder })
-    setFileFolder(folder)
-    await refresh()
+    await db.updateFile(id, { folder }); setFileFolder(folder); await refresh()
   }
   function exportAudit() {
     const data = { exportedAt: new Date().toISOString(), year, notes: notes.map(({ body, ...r }) => r), events, files: files.map(({ blob, ...r }) => r), exams }
@@ -205,14 +220,14 @@ export default function App() {
               : 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-[#202124] hover:bg-[#f1f3f4]'
             return (
               <button key={n.id} type="button" onClick={() => { setCurrentNoteId(n.id); setView('vault') }} className={cls} style={{ paddingLeft: 12 + depth * 14 }}>
-                <span>📝</span><span className="truncate">{key}</span>
+                <span>N</span><span className="truncate">{key}</span>
               </button>
             )
           }
           return (
             <div key={key}>
               <div className="flex items-center gap-2 px-3 py-2 text-sm text-[#5f6368]" style={{ paddingLeft: 12 + depth * 14 }}>
-                <span>📁</span><span className="truncate font-medium">{key}</span>
+                <span>F</span><span className="truncate font-medium">{key}</span>
               </div>
               <TreeNodes obj={val as Record<string, unknown>} depth={depth + 1} />
             </div>
@@ -222,22 +237,30 @@ export default function App() {
     )
   }
 
+  if (examToken) {
+    return <ExamTake token={examToken} onDone={() => { location.hash = ''; setExamToken(null) }} />
+  }
+
   if (!ready) return <div className="h-full flex items-center justify-center bg-[#f8f9fa] text-[#5f6368]">Cargando CapaciHub...</div>
 
   const folderFiles = files.filter(f => (f.folder || 'General') === fileFolder)
+  const folderExams = exams.filter(e => (e.folder || 'General') === fileFolder)
 
   return (
     <div className="h-full flex flex-col">
       <header className="h-14 bg-white border-b border-[#e8eaed] flex items-center px-3 gap-3 shadow-sm z-10 shrink-0">
-        <span className="text-[22px] text-[#5f6368] pl-1">Capaci<span className="text-[#1a73e8] font-medium">Hub</span></span>
+        <button type="button" onClick={() => setNavOpen(o => !o)} className="w-10 h-10 rounded-full flex items-center justify-center text-[#5f6368] hover:bg-[#f1f3f4]">
+          {navOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+        </button>
+        <span className="text-[22px] text-[#5f6368]">Capaci<span className="text-[#1a73e8] font-medium">Hub</span></span>
         <div className="flex-1" />
         <button type="button" onClick={() => { setSearchOpen(true); setSearchQ('') }} className="flex items-center gap-2 h-10 px-4 rounded-full bg-[#f1f3f4] text-[#5f6368] text-sm hover:bg-[#e8eaed]">
-          <Search size={16} /><span className="hidden sm:inline">Buscar (Ctrl+P)</span>
+          <Search size={16} /><span className="hidden sm:inline">Buscar</span>
         </button>
       </header>
 
       <div className="flex-1 flex min-h-0">
-        <nav className="w-16 bg-white border-r border-[#e8eaed] flex flex-col items-center py-3 gap-1 shrink-0">
+        <nav className={'bg-white border-r border-[#e8eaed] flex flex-col items-center py-3 gap-1 shrink-0 transition-all duration-300 overflow-hidden ' + (navOpen ? 'w-16' : 'w-0 border-0')}>
           {NAV.map(({ id, icon: Icon, label }) => {
             const active = view === id
             const cls = active
@@ -282,19 +305,28 @@ export default function App() {
             </>
           )}
 
+          {view === 'graph' && (
+            <div className="flex-1 min-h-0">
+              <GraphView notes={notes} events={events} exams={exams} />
+            </div>
+          )}
+
           {view === 'cronograma' && (
             <div className="flex-1 overflow-y-auto p-8">
               <h1 className="text-[28px] font-normal mb-1">Cronograma</h1>
-              <p className="text-sm text-[#5f6368] mb-6">Plan del ano · Duplica al siguiente</p>
+              <p className="text-sm text-[#5f6368] mb-6">Plan anual · Plantilla · Exportar PDF y Word</p>
               <div className="flex flex-wrap gap-3 items-center mb-6">
                 <select value={year} onChange={e => setYear(+e.target.value)} className={inputCls + ' w-28'}>
                   {[2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <button type="button" onClick={() => { setForm({ date: year + '-09-01', time: '09:00', tipo: 'Presencial', estado: 'Programada' }); setEventModal(true) }} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2"><Plus size={16} /> Capacitacion</button>
-                <button type="button" onClick={dupYear} className="h-10 px-5 rounded-full border border-[#dadce0] text-[#1967d2] text-sm font-medium hover:bg-[#e8f0fe] flex items-center gap-2"><Copy size={16} /> Duplicar ano</button>
+                <button type="button" onClick={() => { setForm({ date: year + '-09-01', time: '09:00', tipo: 'Presencial', estado: 'Programada' }); setEventModal(true) }} className="h-10 px-5 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2"><Plus size={16} /> Evento</button>
+                <button type="button" onClick={genYear} className="h-10 px-4 rounded-full border border-[#dadce0] text-[#1967d2] text-sm font-medium hover:bg-[#e8f0fe] flex items-center gap-2"><LayoutTemplate size={16} /> Ano completo</button>
+                <button type="button" onClick={dupYear} className="h-10 px-4 rounded-full border border-[#dadce0] text-[#1967d2] text-sm font-medium hover:bg-[#e8f0fe] flex items-center gap-2"><Copy size={16} /> Duplicar</button>
+                <button type="button" onClick={() => exportCronogramaPDF(events, year)} className="h-10 px-4 rounded-full border border-[#dadce0] text-[#5f6368] text-sm font-medium hover:bg-[#f1f3f4] flex items-center gap-2"><FileDown size={16} /> PDF</button>
+                <button type="button" onClick={() => exportCronogramaWord(events, year)} className="h-10 px-4 rounded-full border border-[#dadce0] text-[#5f6368] text-sm font-medium hover:bg-[#f1f3f4] flex items-center gap-2"><FileDown size={16} /> Word</button>
               </div>
               <div className="bg-white rounded-xl border border-[#e8eaed] shadow-sm overflow-hidden">
-                {events.length === 0 ? <div className="p-12 text-center text-[#80868b] text-sm">No hay capacitaciones</div> :
+                {events.length === 0 ? <div className="p-12 text-center text-[#80868b] text-sm">Sin capacitaciones</div> :
                   [...events].sort((a, b) => a.date.localeCompare(b.date)).map(e => (
                     <div key={e.id} className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e8eaed] last:border-0 hover:bg-[#f8f9fa]">
                       <span className="text-sm text-[#5f6368] w-36 shrink-0">{e.date} {e.time}</span>
@@ -311,7 +343,7 @@ export default function App() {
             <div className="flex-1 flex flex-col min-h-0">
               <div className="px-8 pt-8 pb-4">
                 <h1 className="text-[28px] font-normal mb-1">Almacenamiento</h1>
-                <p className="text-sm text-[#5f6368] mb-4">Ver PDF e imagenes · Editar texto · Renombrar y mover · Descargar Office</p>
+                <p className="text-sm text-[#5f6368] mb-4">Archivos y examenes por carpeta</p>
                 <div className="flex gap-3">
                   <label className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2 cursor-pointer">
                     <Upload size={16} /> Subir<input type="file" multiple className="hidden" accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.zip,.txt,.md,.csv" onChange={e => onUpload(e.target.files)} />
@@ -326,23 +358,34 @@ export default function App() {
                     const cls = active ? 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left bg-[#e8f0fe] text-[#1967d2] font-medium' : 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left hover:bg-[#f1f3f4]'
                     return (
                       <button key={f} type="button" onClick={() => setFileFolder(f)} className={cls}>
-                        <span>📁</span><span className="truncate flex-1">{f}</span>
-                        <span className="text-xs text-[#80868b]">{files.filter(x => (x.folder || 'General') === f).length}</span>
+                        <span>F</span><span className="truncate flex-1">{f}</span>
                       </button>
                     )
                   })}
                 </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="mb-4 border-2 border-dashed border-[#dadce0] rounded-xl p-8 text-center text-sm text-[#5f6368] bg-white"
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="mb-2 border-2 border-dashed border-[#dadce0] rounded-xl p-6 text-center text-sm text-[#5f6368] bg-white"
                     onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); onUpload(e.dataTransfer.files) }}>
-                    Arrastra archivos aqui o haz clic en Ver para abrir
+                    Arrastra archivos aqui
                   </div>
+                  {folderExams.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-[#5f6368] mb-2">Examenes en esta carpeta</div>
+                      {folderExams.map(ex => (
+                        <div key={ex.id} className="bg-white rounded-lg border border-[#e8eaed] px-4 py-3 flex items-center gap-3 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{ex.title}</div>
+                            <div className="text-xs text-[#80868b]">{ex.estado} · {(ex.questions || []).length} preguntas</div>
+                          </div>
+                          <Chip tone={ex.estado === 'Activo' ? 'green' : 'orange'}>{ex.estado}</Chip>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="bg-white rounded-xl border border-[#e8eaed] shadow-sm overflow-hidden">
                     {folderFiles.map(f => (
                       <div key={f.id} className="flex items-center gap-2 px-4 py-3 border-b border-[#e8eaed] last:border-0 hover:bg-[#f8f9fa]">
-                        <span className="shrink-0">📎</span>
                         <button type="button" onClick={() => setPreviewFile(f)} className="flex-1 font-medium text-sm truncate text-left text-[#1a73e8] hover:underline">{f.name}</button>
-                        <span className="text-xs text-[#80868b] shrink-0">{f.size ? (f.size / 1024).toFixed(1) + ' KB' : '-'}</span>
                         <button type="button" onClick={() => setPreviewFile(f)} className="px-2 py-1 rounded-full text-xs font-medium text-[#1967d2] hover:bg-[#e8f0fe]">Ver</button>
                         <button type="button" onClick={() => renameFile(f.id)} className="px-2 py-1 rounded-full text-xs text-[#5f6368] hover:bg-[#f1f3f4]">Renombrar</button>
                         <button type="button" onClick={() => moveFile(f.id)} className="px-2 py-1 rounded-full text-xs text-[#5f6368] hover:bg-[#f1f3f4]">Mover</button>
@@ -350,7 +393,7 @@ export default function App() {
                         <button type="button" onClick={async () => { if (confirm('Eliminar?')) { await db.deleteFile(f.id); await refresh() } }} className="p-1.5 rounded-full hover:bg-[#fce8e6]"><Trash2 size={16} /></button>
                       </div>
                     ))}
-                    {folderFiles.length === 0 && <div className="p-12 text-center text-[#80868b] text-sm">Carpeta vacia</div>}
+                    {folderFiles.length === 0 && <div className="p-10 text-center text-[#80868b] text-sm">Carpeta vacia</div>}
                   </div>
                 </div>
               </div>
@@ -358,58 +401,33 @@ export default function App() {
           )}
 
           {view === 'examenes' && (
-            <div className="flex-1 overflow-y-auto p-8">
-              <h1 className="text-[28px] font-normal mb-1">Examenes</h1>
-              <p className="text-sm text-[#5f6368] mb-6">Evaluaciones</p>
-              <button type="button" onClick={() => { setForm({ preguntas: '10', notaMin: '70' }); setExamModal(true) }} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2 mb-6"><Plus size={16} /> Crear examen</button>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {exams.map(x => (
-                  <div key={x.id} className="bg-white rounded-xl border border-[#e8eaed] shadow-sm p-5">
-                    <Chip tone={x.estado === 'Activo' ? 'green' : 'orange'}>{x.estado}</Chip>
-                    <div className="font-medium mt-3 mb-1">{x.title}</div>
-                    <div className="text-xs text-[#80868b]">{x.preguntas} preguntas · Min. {x.notaMin}%</div>
-                  </div>
-                ))}
-                {exams.length === 0 && <div className="col-span-full p-12 text-center text-[#80868b] text-sm bg-white rounded-xl border">Sin examenes</div>}
-              </div>
-            </div>
+            <ExamPanel exams={exams} folders={folders} onRefresh={refresh} />
           )}
 
           {view === 'auditoria' && (
             <div className="flex-1 overflow-y-auto p-8">
               <h1 className="text-[28px] font-normal mb-1">Auditoria</h1>
-              <p className="text-sm text-[#5f6368] mb-6">Exporta JSON para fin de ano</p>
+              <p className="text-sm text-[#5f6368] mb-6">Resumen y export JSON</p>
               <button type="button" onClick={exportAudit} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] mb-6">Exportar JSON</button>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {[{ label: 'Eventos ' + year, value: events.length }, { label: 'OK', value: events.filter(e => e.estado === 'Confirmada' || e.estado === 'Programada').length }, { label: 'Archivos', value: files.length }, { label: 'Examenes', value: exams.length }].map(s => (
+                {[
+                  { label: 'Eventos ' + year, value: events.length },
+                  { label: 'Archivos', value: files.length },
+                  { label: 'Examenes', value: exams.length },
+                  { label: 'Notas', value: notes.length },
+                ].map(s => (
                   <div key={s.label} className="bg-white rounded-xl border border-[#e8eaed] shadow-sm p-5">
-                    <div className="text-xs text-[#80868b] mb-1">{s.label}</div>
-                    <div className="text-3xl font-medium">{s.value}</div>
+                    <div className="text-xs text-[#80868b]">{s.label}</div>
+                    <div className="text-3xl font-medium mt-1">{s.value}</div>
                   </div>
                 ))}
-              </div>
-              <div className="bg-white rounded-xl border border-[#e8eaed] shadow-sm p-6 space-y-3">
-                {['Cronograma aprobado', 'Cronograma proximo ano', 'Asistencias digitalizadas', 'Materiales versionados', 'Resultados disponibles', 'Certificados emitidos'].map(label => (
-                  <label key={label} className="flex items-center gap-3 text-sm cursor-pointer"><input type="checkbox" className="w-[18px] h-[18px] accent-[#1a73e8]" />{label}</label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {view === 'graph' && (
-            <div className="flex-1 flex items-center justify-center bg-[#e8eaed] text-[#5f6368] text-sm p-8">
-              <div className="text-center max-w-md">
-                <Network size={48} className="mx-auto mb-4 text-[#1a73e8]" />
-                <p className="font-medium text-[#202124] mb-2">Grafo de relaciones</p>
-                <p>Enlaces wiki entre notas del Vault.</p>
-                <p className="mt-3 text-xs">{notes.length} notas · {events.length} eventos · {exams.length} examenes</p>
               </div>
             </div>
           )}
         </main>
 
         {view === 'vault' && currentNote && (
-          <aside className="w-[280px] bg-white border-l border-[#e8eaed] flex flex-col shrink-0 overflow-hidden">
+          <aside className="w-[260px] bg-white border-l border-[#e8eaed] flex flex-col shrink-0 overflow-hidden">
             <div className="p-5 border-b border-[#e8eaed]">
               <div className="text-xs font-medium uppercase tracking-wider text-[#5f6368] mb-3">Propiedades</div>
               {Object.keys(currentNote.props).length === 0 ? <div className="text-sm text-[#80868b]">Sin propiedades</div> :
@@ -417,21 +435,14 @@ export default function App() {
                   <div key={k} className="flex justify-between text-sm py-1.5"><span className="text-[#5f6368]">{k}</span><span>{v}</span></div>
                 ))}
             </div>
-            <div className="p-5 flex-1 overflow-y-auto">
-              <div className="text-xs font-medium uppercase tracking-wider text-[#5f6368] mb-3">Enlazado desde</div>
-              {notes.filter(o => o.id !== currentNote.id && o.body.includes(currentNote.title.split('\u2014')[0].trim())).map(o => (
-                <button key={o.id} type="button" onClick={() => setCurrentNoteId(o.id)} className="block w-full text-left text-sm text-[#1a73e8] py-2 px-2 rounded-lg hover:bg-[#f1f3f4]">
-                  {o.title}
-                </button>
-              ))}
-            </div>
           </aside>
         )}
       </div>
 
       <footer className="h-7 bg-white border-t border-[#e8eaed] flex items-center px-4 text-xs text-[#80868b] gap-3 shrink-0">
-        <span>Vault local</span><span className="w-px h-3 bg-[#dadce0]" /><span className="truncate">{currentNote?.path || '-'}</span>
-        <span className="ml-auto">CapaciHub</span>
+        <span>CapaciHub</span>
+        <span className="w-px h-3 bg-[#dadce0]" />
+        <span className="truncate">{currentNote?.path || view}</span>
       </footer>
 
       {searchOpen && (
@@ -439,12 +450,12 @@ export default function App() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 px-5 py-4 border-b border-[#e8eaed]">
               <Search size={18} className="text-[#80868b]" />
-              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar notas..." className="flex-1 outline-none text-base" />
+              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar..." className="flex-1 outline-none text-base" />
             </div>
             <div className="max-h-80 overflow-y-auto">
               {searchHits.map(n => (
                 <button key={n.id} type="button" onClick={() => { setCurrentNoteId(n.id); setView('vault'); setSearchOpen(false) }} className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-[#f1f3f4] text-sm">
-                  <span>📝</span><div><div>{n.title}</div><div className="text-xs text-[#80868b]">{n.path}</div></div>
+                  <div><div>{n.title}</div><div className="text-xs text-[#80868b]">{n.path}</div></div>
                 </button>
               ))}
             </div>
@@ -463,19 +474,13 @@ export default function App() {
         <button type="button" onClick={addEvent} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Guardar</button>
       </Modal>
 
-      <Modal open={examModal} onClose={() => setExamModal(false)} title="Nuevo examen">
-        <label className="block mb-4"><span className="block text-xs font-medium text-[#5f6368] mb-1.5">Titulo</span><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></label>
-        <label className="block mb-4"><span className="block text-xs font-medium text-[#5f6368] mb-1.5">Preguntas</span><input type="number" className={inputCls} value={form.preguntas || '10'} onChange={e => setForm({ ...form, preguntas: e.target.value })} /></label>
-        <button type="button" onClick={addExam} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Guardar</button>
-      </Modal>
-
       <Modal open={noteModal} onClose={() => setNoteModal(false)} title="Nueva nota">
         <label className="block mb-4"><span className="block text-xs font-medium text-[#5f6368] mb-1.5">Titulo</span><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></label>
         <button type="button" onClick={addNote} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Crear</button>
       </Modal>
 
       <Modal open={editBody} onClose={() => setEditBody(false)} title="Editar nota">
-        <label className="block mb-4"><span className="block text-xs font-medium text-[#5f6368] mb-1.5">Contenido</span><textarea className={inputCls + ' h-48 py-2 resize-y'} value={form.body || ''} onChange={e => setForm({ ...form, body: e.target.value })} /></label>
+        <textarea className={inputCls + ' h-48 py-2 resize-y mb-4'} value={form.body || ''} onChange={e => setForm({ ...form, body: e.target.value })} />
         <button type="button" onClick={saveNoteBody} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Guardar</button>
       </Modal>
     </div>
