@@ -6,6 +6,7 @@ import JSZip from 'jszip'
 import mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
 import PdfEditor from './PdfEditor'
+import DocxEditor from './DocxEditor'
 
 function isImage(name: string, type: string) {
   return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name)
@@ -55,7 +56,6 @@ async function extractPptxSlides(blob: Blob): Promise<{ slides: SlideData[]; rev
       mediaMap[path.toLowerCase()] = url
     } catch { /* skip */ }
   }
-
   const slideFiles = Object.keys(zip.files)
     .filter(p => /^ppt\/slides\/slide\d+\.xml$/i.test(p))
     .sort((a, b) => {
@@ -63,7 +63,6 @@ async function extractPptxSlides(blob: Blob): Promise<{ slides: SlideData[]; rev
       const nb = parseInt(b.match(/slide(\d+)/i)?.[1] || '0', 10)
       return na - nb
     })
-
   const slides: SlideData[] = []
   for (let i = 0; i < slideFiles.length; i++) {
     const slidePath = slideFiles[i]
@@ -126,6 +125,7 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const [loading, setLoading] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
   const [showPdfEditor, setShowPdfEditor] = useState(false)
+  const [showDocxEditor, setShowDocxEditor] = useState(false)
   const [excelData, setExcelData] = useState<string[][]>([])
   const [excelEditing, setExcelEditing] = useState(false)
 
@@ -234,9 +234,13 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const pptx = isPptx(file.name)
   const officeLegacy = /\.(doc|ppt|xls)$/i.test(file.name) && !docx && !xlsx && !pptx
   const slide = slides[slideIdx]
+  const isHtml = file.name.toLowerCase().endsWith('.html') || file.type === 'text/html'
 
   if (showPdfEditor && pdf) {
     return <PdfEditor file={file} onClose={() => setShowPdfEditor(false)} onUpdated={onUpdated} />
+  }
+  if (showDocxEditor && (docx || isHtml)) {
+    return <DocxEditor file={file} onClose={() => setShowDocxEditor(false)} onUpdated={onUpdated} />
   }
 
   return (
@@ -253,6 +257,11 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
           {pdf && (
             <button type="button" onClick={() => setShowPdfEditor(true)} className="h-9 px-4 rounded-full text-sm font-medium text-[#1967d2] hover:bg-[#e8f0fe] flex items-center gap-1.5">
               <Pencil size={16} /> Editar PDF
+            </button>
+          )}
+          {(docx || isHtml) && (
+            <button type="button" onClick={() => setShowDocxEditor(true)} className="h-9 px-4 rounded-full text-sm font-medium text-[#1967d2] hover:bg-[#e8f0fe] flex items-center gap-1.5">
+              <Pencil size={16} /> Editar Word
             </button>
           )}
           {xlsx && !excelEditing && (
@@ -292,7 +301,6 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
       <div className={'flex-1 overflow-auto flex items-center justify-center p-4 ' + (fullscreen ? 'bg-[#111]' : 'bg-[#f1f3f4]')}>
         {loading && <div className="text-[#5f6368] text-sm">Cargando vista previa...</div>}
         {!loading && error && <div className="text-[#d93025] text-sm bg-white px-6 py-4 rounded-xl shadow max-w-md">{error}</div>}
-
         {!loading && !error && img && url && (
           <img src={url} alt={file.name} className="max-w-full max-h-full object-contain rounded-lg shadow-lg bg-white" />
         )}
@@ -375,12 +383,6 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
                 className={'h-10 px-4 rounded-full text-sm font-medium disabled:opacity-40 flex items-center gap-1 ' + (fullscreen ? 'bg-white/10 text-white hover:bg-white/20' : 'border border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f1f3f4]')}>
                 <ChevronLeft size={16} /> Anterior
               </button>
-              <div className="flex gap-1.5 max-w-xs overflow-x-auto py-1">
-                {slides.map((_, i) => (
-                  <button key={i} type="button" onClick={() => setSlideIdx(i)}
-                    className={'w-2 h-2 rounded-full shrink-0 transition-all ' + (i === slideIdx ? (fullscreen ? 'bg-white w-4' : 'bg-[#1a73e8] w-4') : (fullscreen ? 'bg-white/30' : 'bg-[#dadce0]'))} />
-                ))}
-              </div>
               <button type="button" disabled={slideIdx >= slides.length - 1} onClick={() => setSlideIdx(i => Math.min(slides.length - 1, i + 1))}
                 className={'h-10 px-4 rounded-full text-sm font-medium disabled:opacity-40 flex items-center gap-1 ' + (fullscreen ? 'bg-white/10 text-white hover:bg-white/20' : 'border border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f1f3f4]')}>
                 Siguiente <ChevronRight size={16} />
