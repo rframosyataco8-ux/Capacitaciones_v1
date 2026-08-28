@@ -125,14 +125,14 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const [loading, setLoading] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
   const [showPdfEditor, setShowPdfEditor] = useState(false)
-  const [showDocxEditor, setShowDocxEditor] = useState(false)
+  const [showDocxEditor, setShowDocxEditor] = useState(() => /\.docx$/i.test(file.name) || /\.html?$/i.test(file.name))
   const [excelData, setExcelData] = useState<string[][]>([])
-  const [excelEditing, setExcelEditing] = useState(false)
+  const [excelEditing, setExcelEditing] = useState(() => /\.xlsx?$/i.test(file.name))
 
   useEffect(() => {
     let objectUrl: string | null = null
     let revokeSlides: (() => void) | null = null
-    setError(''); setText(''); setHtml(''); setTableHtml(''); setSlides([]); setSlideIdx(0); setEditing(false); setExcelEditing(false); setLoading(true)
+    setError(''); setText(''); setHtml(''); setTableHtml(''); setSlides([]); setSlideIdx(0); setEditing(false); setLoading(true)
     ;(async () => {
       try {
         const full = await db.getFile(file.id)
