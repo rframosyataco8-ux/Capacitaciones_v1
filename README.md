@@ -1,51 +1,38 @@
 # CapaciHub
 
-Sistema de gestion de capacitaciones (local-first).
+Sistema local de capacitaciones: vault tipo Obsidian, archivos tipo OneDrive, cronograma anual, examenes y grafo.
 
-## Requisitos
-
-- Node.js 18+
-- npm
-
-## Instalacion y arranque
+## Arranque rapido
 
 ```bash
-cd CapaciHub
 git pull origin main
 npm install
 npm run dev
 ```
 
-Abre la URL de Vite (ej. http://localhost:5173).
+Abre http://localhost:5173
 
-**No uses Live Server** con HTML antiguo.
+## Edicion de archivos (sin servidor)
 
-## Si hay errores al actualizar
+| Formato | Al abrir |
+|---------|----------|
+| `.docx` / `.html` | Editor Word (barra Inicio/Insertar, zoom, guardar) |
+| `.xlsx` | Tabla editable + Guardar Excel |
+| `.pdf` | Vista + boton Editar PDF (texto/resaltado) |
+| `.pptx` | Diapositivas (texto + imagenes) |
+| `.txt` / `.md` | Edicion de texto |
+
+## OnlyOffice (opcional, casi Office Online)
+
+Si tienes Docker Desktop:
 
 ```bash
-git fetch origin
-git reset --hard origin/main
-rm -rf node_modules package-lock.json
-npm install
-npm run dev
+docker compose up -d
 ```
 
-Si la base de datos local falla (schema viejo), en el navegador:
-DevTools → Application → IndexedDB → eliminar **CapaciHub** → recargar.
+OnlyOffice queda en http://localhost:8080  
+Ahi puedes subir y editar Word/Excel/PPT con experiencia muy cercana a Microsoft Office.
 
-## Funciones
+## Datos
 
-| Modulo | Que hace |
-|--------|----------|
-| **Vault** | Notas markdown, wiki links, tags |
-| **Grafo** | Mapa de relaciones (arrastrable) |
-| **Cronograma** | Eventos anuales, duplicar ano, export PDF/Word |
-| **Archivos** | Subir, ver PDF/imagenes/PPTX/DOCX/Excel, renombrar, mover |
-| **Examenes** | Crear preguntas, URL para rendir, resultados |
-| **Auditoria** | Resumen + export JSON |
-
-## Stack
-
-React 19 · TypeScript · Vite · Tailwind 4 · IndexedDB (idb) · jsPDF · mammoth · SheetJS · JSZip
-
-Datos solo en el navegador (IndexedDB).
+Todo se guarda en **IndexedDB del navegador** (local-first). No se sube a la nube.
