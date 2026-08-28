@@ -210,7 +210,7 @@ export default function PdfEditor({ file, onClose, onUpdated }: Props) {
             {annotations.map(a => (
               <div key={a.id} className="flex items-start gap-2 p-2 rounded-lg hover:bg-[#f8f9fa] text-sm">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-[#80868b">Pag. {a.page + 1} · {a.kind === 'text' ? 'Texto' : 'Resaltado'}</div>
+                  <div className="text-xs text-[#80868b]">Pag. {a.page + 1} · {a.kind === 'text' ? 'Texto' : 'Resaltado'}</div>
                   <div className="truncate text-[#202124]">{a.kind === 'text' ? a.text : 'Marcador amarillo'}</div>
                 </div>
                 <button type="button" onClick={() => setAnnotations(list => list.filter(x => x.id !== a.id))} className="p-1 text-[#80868b] hover:text-[#d93025]">
