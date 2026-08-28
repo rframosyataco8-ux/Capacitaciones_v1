@@ -2,23 +2,14 @@
 
 @theme {
   --font-sans: "Roboto", "Segoe UI", system-ui, sans-serif;
-  --color-g-blue: #1a73e8;
-  --color-g-blue-hover: #1765cc;
-  --color-g-blue-soft: #e8f0fe;
-  --color-g-text: #202124;
-  --color-g-secondary: #5f6368;
-  --color-g-faint: #80868b;
-  --color-g-border: #dadce0;
-  --color-g-bg: #f8f9fa;
-  --color-g-surface: #ffffff;
 }
 
 html, body, #root {
   height: 100%;
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--color-g-bg);
-  color: var(--color-g-text);
+  background: #f8f9fa;
+  color: #202124;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -27,3 +18,6 @@ html, body, #root {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
