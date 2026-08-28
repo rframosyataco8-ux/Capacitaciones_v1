@@ -18,13 +18,13 @@ const NAV: { id: View; icon: typeof FileText; label: string }[] = [
 ]
 
 function Chip({ children, tone = 'blue' }: { children: React.ReactNode; tone?: 'green' | 'orange' | 'blue' | 'red' }) {
-  const c = {
+  const tones: Record<string, string> = {
     green: 'bg-[#e6f4ea] text-[#188038]',
     orange: 'bg-[#fef7e0] text-[#e37400]',
     blue: 'bg-[#e8f0fe] text-[#1967d2]',
     red: 'bg-[#fce8e6] text-[#d93025]',
-  }[tone]
-  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c}`}>{children}</span>
+  }
+  return <span className={'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + tones[tone]}>{children}</span>
 }
 
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -34,7 +34,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8eaed]">
           <h2 className="text-lg font-medium text-[#202124]">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]"><X size={18} /></button>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]"><X size={18} /></button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -110,12 +110,12 @@ export default function App() {
     h = h.replace(/^# (.+)$/gm, '<h1 class="text-xl font-medium mt-4 mb-2">$1</h1>')
     h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     h = h.replace(/\[\[([^\]]+)\]\]/g, (_, t) => {
-      const note = notes.find(n => n.title.includes(t) || t.includes(n.title.split('—')[0].trim()))
-      return `<a data-id="${note?.id || ''}" class="wiki text-[#1a73e8] cursor-pointer hover:underline">[[${t}]]</a>`
+      const note = notes.find(n => n.title.includes(t) || t.includes(n.title.split('\u2014')[0].trim()))
+      return '<a data-id="' + (note?.id || '') + '" class="wiki text-[#1a73e8] cursor-pointer hover:underline">[[' + t + ']]</a>'
     })
     h = h.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
     h = h.replace(/\n\n/g, '</p><p class="mb-3">')
-    return `<p class="mb-3">${h}</p>`
+    return '<p class="mb-3">' + h + '</p>'
   }
 
   async function addEvent() {
@@ -130,7 +130,7 @@ export default function App() {
   }
   async function addNote() {
     if (!form.title) return
-    const note = await db.saveNote({ title: form.title, path: `${form.folder || 'Base de Conocimiento'}/${form.title}.md`, body: `# ${form.title}\n\nEscribe aquí…\n` })
+    const note = await db.saveNote({ title: form.title, path: (form.folder || 'Base de Conocimiento') + '/' + form.title + '.md', body: '# ' + form.title + '\n\nEscribe aqui...\n' })
     setNoteModal(false); setForm({}); await refresh(); setCurrentNoteId(note.id); setView('vault')
   }
   async function saveNoteBody() {
@@ -140,7 +140,7 @@ export default function App() {
   }
   async function dupYear() {
     const next = year + 1
-    if (!confirm(`¿Duplicar eventos de ${year} a ${next}?`)) return
+    if (!confirm('Duplicar eventos de ' + year + ' a ' + next + '?')) return
     for (const e of await db.listEvents(year)) {
       await db.saveEvent({ ...e, id: undefined as unknown as string, date: e.date.replace(String(year), String(next)), estado: 'Borrador' })
     }
@@ -162,7 +162,7 @@ export default function App() {
   function exportAudit() {
     const data = { exportedAt: new Date().toISOString(), year, notes: notes.map(({ body, ...r }) => r), events, files: files.map(({ blob, ...r }) => r), exams }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `CapaciHub-auditoria-${year}.json`; a.click()
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'CapaciHub-auditoria-' + year + '.json'; a.click()
   }
 
   const tree = useMemo(() => {
@@ -192,11 +192,12 @@ export default function App() {
           if (val.__note) {
             const n = val.__note
             const on = currentNote?.id === n.id
+            const cls = on
+              ? 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors bg-[#e8f0fe] text-[#1967d2] font-medium'
+              : 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors text-[#202124] hover:bg-[#f1f3f4]'
             return (
               <button key={n.id} type="button" onClick={() => { setCurrentNoteId(n.id); setView('vault') }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
-                  on ? 'bg-[#e8f0fe] text-[#1967d2] font-medium' : 'text-[#202124] hover:bg-[#f1f3f4]'}
-                style={{ paddingLeft: 12 + depth * 14 }}>
+                className={cls} style={{ paddingLeft: 12 + depth * 14 }}>
                 <span className="text-base">📝</span><span className="truncate">{key}</span>
               </button>
             )
@@ -222,7 +223,7 @@ export default function App() {
         <span className="text-[22px] text-[#5f6368] pl-1">Capaci<span className="text-[#1a73e8] font-medium">Hub</span></span>
         <div className="flex-1 flex gap-1 ml-4 min-w-0">
           {currentNote && view === 'vault' && (
-            <span className="px-4 py-2 rounded-full text-sm bg-[#e8f0fe] text-[#1967d2] font-medium truncate max-w-xs">{currentNote.title.split('—')[0].trim()}</span>
+            <span className="px-4 py-2 rounded-full text-sm bg-[#e8f0fe] text-[#1967d2] font-medium truncate max-w-xs">{currentNote.title.split('\u2014')[0].trim()}</span>
           )}
         </div>
         <button type="button" onClick={() => { setSearchOpen(true); setSearchQ('') }} className="flex items-center gap-2 h-10 px-4 rounded-full bg-[#f1f3f4] text-[#5f6368] text-sm hover:bg-[#e8eaed]">
@@ -232,13 +233,17 @@ export default function App() {
 
       <div className="flex-1 flex min-h-0">
         <nav className="w-16 bg-white border-r border-[#e8eaed] flex flex-col items-center py-3 gap-1 shrink-0">
-          {NAV.map(({ id, icon: Icon, label }) => (
-            <button key={id} type="button" title={label} onClick={() => setView(id)}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
-                view === id ? 'bg-[#e8f0fe] text-[#1a73e8]' : 'text-[#5f6368] hover:bg-[#f1f3f4]'}`}>
-              <Icon size={20} />
-            </button>
-          ))}
+          {NAV.map(({ id, icon: Icon, label }) => {
+            const active = view === id
+            const cls = active
+              ? 'w-12 h-12 rounded-2xl flex items-center justify-center transition-colors bg-[#e8f0fe] text-[#1a73e8]'
+              : 'w-12 h-12 rounded-2xl flex items-center justify-center transition-colors text-[#5f6368] hover:bg-[#f1f3f4]'
+            return (
+              <button key={id} type="button" title={label} onClick={() => setView(id)} className={cls}>
+                <Icon size={20} />
+              </button>
+            )
+          })}
         </nav>
 
         {view === 'vault' && (
@@ -280,7 +285,7 @@ export default function App() {
                 <select value={year} onChange={e => setYear(+e.target.value)} className={inputCls + ' w-28'}>
                   {[2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <button type="button" onClick={() => { setForm({ date: `${year}-09-01`, time: '09:00', tipo: 'Presencial', estado: 'Programada' }); setEventModal(true) }} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2"><Plus size={16} /> Capacitación</button>
+                <button type="button" onClick={() => { setForm({ date: year + '-09-01', time: '09:00', tipo: 'Presencial', estado: 'Programada' }); setEventModal(true) }} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2"><Plus size={16} /> Capacitación</button>
                 <button type="button" onClick={dupYear} className="h-10 px-5 rounded-full border border-[#dadce0] text-[#1967d2] text-sm font-medium hover:bg-[#e8f0fe] flex items-center gap-2"><Copy size={16} /> Duplicar año</button>
               </div>
               <div className="bg-white rounded-xl border border-[#e8eaed] shadow-sm overflow-hidden">
@@ -290,7 +295,7 @@ export default function App() {
                       <span className="text-sm text-[#5f6368] w-36 shrink-0">{e.date} {e.time}</span>
                       <span className="flex-1 font-medium text-sm">{e.title}</span>
                       <Chip tone={e.estado === 'Pendiente' ? 'orange' : e.estado === 'Borrador' ? 'blue' : 'green'}>{e.estado}</Chip>
-                      <button type="button" onClick={async () => { if (confirm('¿Eliminar?')) { await db.deleteEvent(e.id); await refresh() } }} className="p-1.5 rounded-full text-[#80868b] hover:bg-[#fce8e6] hover:text-[#d93025]"><Trash2 size={16} /></button>
+                      <button type="button" onClick={async () => { if (confirm('Eliminar?')) { await db.deleteEvent(e.id); await refresh() } }} className="p-1.5 rounded-full text-[#80868b] hover:bg-[#fce8e6] hover:text-[#d93025]"><Trash2 size={16} /></button>
                     </div>
                   ))}
               </div>
@@ -311,12 +316,18 @@ export default function App() {
               </div>
               <div className="flex-1 flex min-h-0 border-t border-[#e8eaed]">
                 <div className="w-56 bg-white border-r border-[#e8eaed] overflow-y-auto p-2">
-                  {folders.map(f => (
-                    <button key={f} type="button" onClick={() => setFileFolder(f)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left ${fileFolder === f ? 'bg-[#e8f0fe] text-[#1967d2] font-medium' : 'hover:bg-[#f1f3f4]'}`}>
-                      <span>📁</span><span className="truncate flex-1">{f}</span>
-                      <span className="text-xs text-[#80868b]">{files.filter(x => (x.folder || 'General') === f).length}</span>
-                    </button>
-                  ))}
+                  {folders.map(f => {
+                    const active = fileFolder === f
+                    const cls = active
+                      ? 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left bg-[#e8f0fe] text-[#1967d2] font-medium'
+                      : 'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left hover:bg-[#f1f3f4]'
+                    return (
+                      <button key={f} type="button" onClick={() => setFileFolder(f)} className={cls}>
+                        <span>📁</span><span className="truncate flex-1">{f}</span>
+                        <span className="text-xs text-[#80868b]">{files.filter(x => (x.folder || 'General') === f).length}</span>
+                      </button>
+                    )
+                  })}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="mb-4 border-2 border-dashed border-[#dadce0] rounded-xl p-8 text-center text-sm text-[#5f6368] bg-white"
@@ -328,7 +339,7 @@ export default function App() {
                       <div key={f.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#e8eaed] last:border-0 hover:bg-[#f8f9fa]">
                         <span>📎</span><span className="flex-1 font-medium text-sm truncate">{f.name}</span>
                         <button type="button" onClick={() => downloadFile(f.id)} className="p-1.5 rounded-full hover:bg-[#e8f0fe] text-[#1a73e8]"><Download size={16} /></button>
-                        <button type="button" onClick={async () => { if (confirm('¿Eliminar?')) { await db.deleteFile(f.id); await refresh() } }} className="p-1.5 rounded-full hover:bg-[#fce8e6]"><Trash2 size={16} /></button>
+                        <button type="button" onClick={async () => { if (confirm('Eliminar?')) { await db.deleteFile(f.id); await refresh() } }} className="p-1.5 rounded-full hover:bg-[#fce8e6]"><Trash2 size={16} /></button>
                       </div>
                     ))}
                     {files.filter(f => (f.folder || 'General') === fileFolder).length === 0 && <div className="p-12 text-center text-[#80868b] text-sm">Carpeta vacía</div>}
@@ -362,7 +373,7 @@ export default function App() {
               <p className="text-sm text-[#5f6368] mb-6">Exporta JSON para fin de año</p>
               <button type="button" onClick={exportAudit} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] mb-6">Exportar JSON</button>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {[ { label: `Eventos ${year}`, value: events.length }, { label: 'OK', value: events.filter(e => e.estado === 'Confirmada' || e.estado === 'Programada').length }, { label: 'Archivos', value: files.length }, { label: 'Exámenes', value: exams.length } ].map(s => (
+                {[{ label: 'Eventos ' + year, value: events.length }, { label: 'OK', value: events.filter(e => e.estado === 'Confirmada' || e.estado === 'Programada').length }, { label: 'Archivos', value: files.length }, { label: 'Exámenes', value: exams.length }].map(s => (
                   <div key={s.label} className="bg-white rounded-xl border border-[#e8eaed] shadow-sm p-5">
                     <div className="text-xs text-[#80868b] mb-1">{s.label}</div>
                     <div className="text-3xl font-medium">{s.value}</div>
@@ -382,7 +393,7 @@ export default function App() {
               <div className="text-center max-w-md">
                 <Network size={48} className="mx-auto mb-4 text-[#1a73e8]" />
                 <p className="font-medium text-[#202124] mb-2">Grafo de relaciones</p>
-                <p>Enlaces con <code className="bg-white px-1 rounded">[[wiki links]]</code> entre notas del Vault.</p>
+                <p>Enlaces con wiki links entre notas del Vault.</p>
                 <p className="mt-3 text-xs">{notes.length} notas · {events.length} eventos · {exams.length} exámenes</p>
               </div>
             </div>
@@ -400,9 +411,9 @@ export default function App() {
             </div>
             <div className="p-5 flex-1 overflow-y-auto">
               <div className="text-xs font-medium uppercase tracking-wider text-[#5f6368] mb-3">Enlazado desde</div>
-              {notes.filter(o => o.id !== currentNote.id && o.body.includes(currentNote.title.split('—')[0].trim())).map(o => (
+              {notes.filter(o => o.id !== currentNote.id && o.body.includes(currentNote.title.split('\u2014')[0].trim())).map(o => (
                 <button key={o.id} type="button" onClick={() => setCurrentNoteId(o.id)} className="block w-full text-left text-sm text-[#1a73e8] py-2 px-2 rounded-lg hover:bg-[#f1f3f4]">
-                  {o.title}<div className="text-xs text-[#80868b] mt-0.5">…menciona esta nota…</div>
+                  {o.title}<div className="text-xs text-[#80868b] mt-0.5">menciona esta nota</div>
                 </button>
               ))}
             </div>
@@ -411,7 +422,7 @@ export default function App() {
       </div>
 
       <footer className="h-7 bg-white border-t border-[#e8eaed] flex items-center px-4 text-xs text-[#80868b] gap-3 shrink-0">
-        <span>Vault local</span><span className="w-px h-3 bg-[#dadce0]" /><span className="truncate">{currentNote?.path || '—'}</span>
+        <span>Vault local</span><span className="w-px h-3 bg-[#dadce0]" /><span className="truncate">{currentNote?.path || '-'}</span>
         <span className="ml-auto">CapaciHub · React + Vite + Tailwind</span>
       </footer>
 
@@ -420,7 +431,7 @@ export default function App() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 px-5 py-4 border-b border-[#e8eaed]">
               <Search size={18} className="text-[#80868b]" />
-              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar notas…" className="flex-1 outline-none text-base" />
+              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar notas..." className="flex-1 outline-none text-base" />
             </div>
             <div className="max-h-80 overflow-y-auto">
               {searchHits.map(n => (
@@ -433,24 +444,24 @@ export default function App() {
         </div>
       )}
 
-      <Modal open={eventModal} onClose={() => setEventModal(false)} title="Nueva capacitación">
-        <Field label="Título"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+      <Modal open={eventModal} onClose={() => setEventModal(false)} title="Nueva capacitacion">
+        <Field label="Titulo"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
         <Field label="Fecha"><input type="date" className={inputCls} value={form.date || ''} onChange={e => setForm({ ...form, date: e.target.value })} /></Field>
         <Field label="Hora"><input type="time" className={inputCls} value={form.time || '09:00'} onChange={e => setForm({ ...form, time: e.target.value })} /></Field>
-        <Field label="Tipo"><select className={inputCls} value={form.tipo || 'Presencial'} onChange={e => setForm({ ...form, tipo: e.target.value })}><option>Presencial</option><option>Virtual</option><option>Híbrida</option></select></Field>
+        <Field label="Tipo"><select className={inputCls} value={form.tipo || 'Presencial'} onChange={e => setForm({ ...form, tipo: e.target.value })}><option>Presencial</option><option>Virtual</option><option>Hibrida</option></select></Field>
         <Field label="Estado"><select className={inputCls} value={form.estado || 'Programada'} onChange={e => setForm({ ...form, estado: e.target.value })}><option>Programada</option><option>Confirmada</option><option>Pendiente</option><option>Borrador</option></select></Field>
         <button type="button" onClick={addEvent} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Guardar</button>
       </Modal>
 
       <Modal open={examModal} onClose={() => setExamModal(false)} title="Nuevo examen">
-        <Field label="Título"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+        <Field label="Titulo"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
         <Field label="Preguntas"><input type="number" className={inputCls} value={form.preguntas || '10'} onChange={e => setForm({ ...form, preguntas: e.target.value })} /></Field>
-        <Field label="Nota mínima %"><input type="number" className={inputCls} value={form.notaMin || '70'} onChange={e => setForm({ ...form, notaMin: e.target.value })} /></Field>
+        <Field label="Nota minima %"><input type="number" className={inputCls} value={form.notaMin || '70'} onChange={e => setForm({ ...form, notaMin: e.target.value })} /></Field>
         <button type="button" onClick={addExam} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Guardar</button>
       </Modal>
 
       <Modal open={noteModal} onClose={() => setNoteModal(false)} title="Nueva nota">
-        <Field label="Título"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+        <Field label="Titulo"><input className={inputCls} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
         <Field label="Carpeta"><input className={inputCls} value={form.folder || 'Base de Conocimiento'} onChange={e => setForm({ ...form, folder: e.target.value })} /></Field>
         <button type="button" onClick={addNote} className="w-full h-10 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc]">Crear</button>
       </Modal>
