@@ -1,19 +1,13 @@
 # CapaciHub
 
-Sistema de gestión de capacitaciones — **stack moderno**.
+Sistema de gestion de capacitaciones (local-first).
 
-## Stack
+## Requisitos
 
-| Tecnología | Uso |
-|------------|-----|
-| **React 19** | UI |
-| **TypeScript** | Tipado |
-| **Vite** | Build y dev server |
-| **Tailwind CSS 4** | Estilos (Material / Google) |
-| **idb** | IndexedDB (datos locales) |
-| **lucide-react** | Iconos |
+- Node.js 18+
+- npm
 
-## Cómo ejecutar
+## Instalacion y arranque
 
 ```bash
 cd CapaciHub
@@ -22,24 +16,36 @@ npm install
 npm run dev
 ```
 
-Abre la URL que indique Vite (ej. `http://localhost:5173`).
+Abre la URL de Vite (ej. http://localhost:5173).
 
-**Importante:** ya no uses Live Server con el HTML viejo. Este proyecto se abre con `npm run dev`.
+**No uses Live Server** con HTML antiguo.
 
-## Scripts
+## Si hay errores al actualizar
 
-- `npm run dev` — desarrollo con hot reload
-- `npm run build` — producción → `dist/`
-- `npm run preview` — previsualizar build
+```bash
+git fetch origin
+git reset --hard origin/main
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
+
+Si la base de datos local falla (schema viejo), en el navegador:
+DevTools → Application → IndexedDB → eliminar **CapaciHub** → recargar.
 
 ## Funciones
 
-- **Vault** — notas, `[[wiki links]]`, tags, propiedades, backlinks
-- **Cronograma** — crear/eliminar, año, duplicar al siguiente
-- **Archivos** — PDF/PPT/Word, carpetas, descargar
-- **Exámenes** — evaluaciones
-- **Auditoría** — resumen + exportar JSON
+| Modulo | Que hace |
+|--------|----------|
+| **Vault** | Notas markdown, wiki links, tags |
+| **Grafo** | Mapa de relaciones (arrastrable) |
+| **Cronograma** | Eventos anuales, duplicar ano, export PDF/Word |
+| **Archivos** | Subir, ver PDF/imagenes/PPTX/DOCX/Excel, renombrar, mover |
+| **Examenes** | Crear preguntas, URL para rendir, resultados |
+| **Auditoria** | Resumen + export JSON |
 
-Datos en el navegador (IndexedDB).
+## Stack
 
-Repo: https://github.com/rframosyataco8-ux/CapaciHub
+React 19 · TypeScript · Vite · Tailwind 4 · IndexedDB (idb) · jsPDF · mammoth · SheetJS · JSZip
+
+Datos solo en el navegador (IndexedDB).
