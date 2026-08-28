@@ -5,6 +5,7 @@ import * as db from '../lib/db'
 import JSZip from 'jszip'
 import mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
+import PdfEditor from './PdfEditor'
 
 function isImage(name: string, type: string) {
   return type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name)
@@ -26,11 +27,7 @@ function isPptx(name: string) {
   return /\.pptx$/i.test(name)
 }
 
-type SlideData = {
-  title: string
-  paragraphs: string[]
-  imageUrls: string[]
-}
+type SlideData = { title: string; paragraphs: string[]; imageUrls: string[] }
 
 function decodeXml(s: string) {
   return s
@@ -68,24 +65,19 @@ async function extractPptxSlides(blob: Blob): Promise<{ slides: SlideData[]; rev
     })
 
   const slides: SlideData[] = []
-
   for (let i = 0; i < slideFiles.length; i++) {
     const slidePath = slideFiles[i]
     const xml = await zip.files[slidePath].async('text')
-
     const paragraphs: string[] = []
     const pBlocks = xml.split(/<\/a:p>/i)
     for (const block of pBlocks) {
       const texts: string[] = []
       const re = /<a:t(?:\s[^>]*)?>([^<]*)<\/a:t>/gi
       let m
-      while ((m = re.exec(block)) !== null) {
-        texts.push(decodeXml(m[1]))
-      }
+      while ((m = re.exec(block)) !== null) texts.push(decodeXml(m[1]))
       const line = texts.join('').replace(/\s+/g, ' ').trim()
       if (line) paragraphs.push(line)
     }
-
     const imageUrls: string[] = []
     const slideNum = slidePath.match(/slide(\d+)/i)?.[1]
     if (slideNum) {
@@ -100,38 +92,26 @@ async function extractPptxSlides(blob: Blob): Promise<{ slides: SlideData[]; rev
           while ((tm = targetRe.exec(relXml)) !== null) {
             const target = tm[1].replace(/^\.\.\//, 'ppt/')
             const base = target.split('/').pop()?.toLowerCase() || ''
-            const url = mediaMap[base] || mediaMap[target.toLowerCase()]
-            if (url && !imageUrls.includes(url)) imageUrls.push(url)
+            const u = mediaMap[base] || mediaMap[target.toLowerCase()]
+            if (u && !imageUrls.includes(u)) imageUrls.push(u)
           }
         } catch { /* skip */ }
       }
     }
-
     slides.push({
       title: 'Diapositiva ' + (i + 1),
       paragraphs: paragraphs.length ? paragraphs : ['(Sin texto en esta diapositiva)'],
       imageUrls,
     })
   }
-
   const allMedia = Object.values(mediaMap).filter((v, i, a) => a.indexOf(v) === i)
   if (allMedia.length && slides.every(s => s.imageUrls.length === 0)) {
-    slides.forEach((s, i) => {
-      if (allMedia[i]) s.imageUrls = [allMedia[i]]
-    })
+    slides.forEach((s, i) => { if (allMedia[i]) s.imageUrls = [allMedia[i]] })
   }
-
-  return {
-    slides,
-    revoke: () => objectUrls.forEach(u => URL.revokeObjectURL(u)),
-  }
+  return { slides, revoke: () => objectUrls.forEach(u => URL.revokeObjectURL(u)) }
 }
 
-type Props = {
-  file: FileItem
-  onClose: () => void
-  onUpdated: () => void
-}
+type Props = { file: FileItem; onClose: () => void; onUpdated: () => void }
 
 export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const [url, setUrl] = useState<string | null>(null)
@@ -145,29 +125,20 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
+  const [showPdfEditor, setShowPdfEditor] = useState(false)
+  const [excelData, setExcelData] = useState<string[][]>([])
+  const [excelEditing, setExcelEditing] = useState(false)
 
   useEffect(() => {
     let objectUrl: string | null = null
     let revokeSlides: (() => void) | null = null
-    setError('')
-    setText('')
-    setHtml('')
-    setTableHtml('')
-    setSlides([])
-    setSlideIdx(0)
-    setEditing(false)
-    setLoading(true)
+    setError(''); setText(''); setHtml(''); setTableHtml(''); setSlides([]); setSlideIdx(0); setEditing(false); setExcelEditing(false); setLoading(true)
     ;(async () => {
       try {
         const full = await db.getFile(file.id)
-        if (!full?.blob) {
-          setError('No hay contenido guardado para este archivo.')
-          setLoading(false)
-          return
-        }
+        if (!full?.blob) { setError('No hay contenido guardado para este archivo.'); setLoading(false); return }
         objectUrl = URL.createObjectURL(full.blob)
         setUrl(objectUrl)
-
         if (isText(full.name, full.type)) {
           setText(await full.blob.text())
         } else if (isDocx(full.name)) {
@@ -180,6 +151,8 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
           const first = wb.SheetNames[0]
           const sheet = wb.Sheets[first]
           setTableHtml(XLSX.utils.sheet_to_html(sheet, { id: 'sheet-preview' }))
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as string[][]
+          setExcelData(rows.map(r => r.map(c => String(c ?? ''))))
         } else if (isPptx(full.name)) {
           const result = await extractPptxSlides(full.blob)
           revokeSlides = result.revoke
@@ -223,6 +196,25 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
     }
   }
 
+  async function saveExcel() {
+    setSaving(true)
+    try {
+      const ws = XLSX.utils.aoa_to_sheet(excelData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Hoja1')
+      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([new Uint8Array(out as ArrayBuffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      await db.updateFile(file.id, { blob, size: blob.size })
+      setExcelEditing(false)
+      onUpdated()
+      alert('Excel guardado')
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function download() {
     const full = await db.getFile(file.id)
     if (!full?.blob) return
@@ -243,6 +235,10 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
   const officeLegacy = /\.(doc|ppt|xls)$/i.test(file.name) && !docx && !xlsx && !pptx
   const slide = slides[slideIdx]
 
+  if (showPdfEditor && pdf) {
+    return <PdfEditor file={file} onClose={() => setShowPdfEditor(false)} onUpdated={onUpdated} />
+  }
+
   return (
     <div className={'fixed inset-0 z-50 flex flex-col ' + (fullscreen ? 'bg-[#1a1a1a]' : 'bg-black/50 backdrop-blur-sm')}>
       {!fullscreen && (
@@ -254,6 +250,21 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
               {pptx && slides.length > 0 ? ' · ' + slides.length + ' diapositivas' : ''}
             </div>
           </div>
+          {pdf && (
+            <button type="button" onClick={() => setShowPdfEditor(true)} className="h-9 px-4 rounded-full text-sm font-medium text-[#1967d2] hover:bg-[#e8f0fe] flex items-center gap-1.5">
+              <Pencil size={16} /> Editar PDF
+            </button>
+          )}
+          {xlsx && !excelEditing && (
+            <button type="button" onClick={() => setExcelEditing(true)} className="h-9 px-4 rounded-full text-sm font-medium text-[#1967d2] hover:bg-[#e8f0fe] flex items-center gap-1.5">
+              <Pencil size={16} /> Editar Excel
+            </button>
+          )}
+          {xlsx && excelEditing && (
+            <button type="button" disabled={saving} onClick={saveExcel} className="h-9 px-4 rounded-full text-sm font-medium bg-[#1a73e8] text-white hover:bg-[#1765cc] flex items-center gap-1.5">
+              <Save size={16} /> {saving ? 'Guardando...' : 'Guardar Excel'}
+            </button>
+          )}
           {pptx && slides.length > 0 && (
             <button type="button" onClick={() => setFullscreen(true)} className="h-9 px-4 rounded-full text-sm font-medium text-[#5f6368] hover:bg-[#f1f3f4] flex items-center gap-1.5">
               <Maximize2 size={16} /> Presentar
@@ -296,19 +307,38 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
             <pre className="w-full h-full max-w-4xl bg-white rounded-xl shadow border border-[#dadce0] p-6 font-mono text-sm text-[#202124] overflow-auto whitespace-pre-wrap">{text || '(vacio)'}</pre>
           )
         )}
-
         {!loading && !error && docx && (
           <div className="w-full h-full max-w-4xl bg-white rounded-xl shadow border border-[#dadce0] p-8 overflow-auto text-[#202124] text-[15px] leading-relaxed"
             dangerouslySetInnerHTML={{ __html: html }} />
         )}
-
         {!loading && !error && xlsx && (
           <div className="w-full h-full max-w-5xl bg-white rounded-xl shadow border border-[#dadce0] p-4 overflow-auto">
-            <style>{`#sheet-preview{border-collapse:collapse;width:100%;font-size:13px}#sheet-preview td,#sheet-preview th{border:1px solid #dadce0;padding:6px 10px;text-align:left}#sheet-preview tr:first-child td{font-weight:500;background:#f8f9fa}`}</style>
-            <div dangerouslySetInnerHTML={{ __html: tableHtml }} />
+            {excelEditing ? (
+              <table className="border-collapse w-full text-sm">
+                <tbody>
+                  {excelData.map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => (
+                        <td key={ci} className="border border-[#dadce0] p-0">
+                          <input value={cell} onChange={e => {
+                            const next = excelData.map(r => [...r])
+                            next[ri][ci] = e.target.value
+                            setExcelData(next)
+                          }} className="w-full min-w-[80px] px-2 py-1.5 outline-none focus:bg-[#e8f0fe] text-[#202124]" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <>
+                <style>{`#sheet-preview{border-collapse:collapse;width:100%;font-size:13px}#sheet-preview td,#sheet-preview th{border:1px solid #dadce0;padding:6px 10px;text-align:left}#sheet-preview tr:first-child td{font-weight:500;background:#f8f9fa}`}</style>
+                <div dangerouslySetInnerHTML={{ __html: tableHtml }} />
+              </>
+            )}
           </div>
         )}
-
         {!loading && !error && pptx && slide && (
           <div className={'w-full flex flex-col items-center gap-4 ' + (fullscreen ? 'h-full justify-center' : 'max-w-4xl')}>
             {fullscreen && (
@@ -318,46 +348,28 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
                 <button type="button" onClick={onClose} className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center"><X size={16} /></button>
               </div>
             )}
-
-            <div className={
-              'w-full overflow-hidden flex flex-col ' +
-              (fullscreen
-                ? 'max-w-5xl aspect-video bg-gradient-to-br from-[#1e3a5f] to-[#0d1b2a] rounded-2xl shadow-2xl'
-                : 'bg-white rounded-2xl shadow-lg border border-[#e8eaed] min-h-[380px]')
-            }>
+            <div className={'w-full overflow-hidden flex flex-col ' + (fullscreen ? 'max-w-5xl aspect-video bg-gradient-to-br from-[#1e3a5f] to-[#0d1b2a] rounded-2xl shadow-2xl' : 'bg-white rounded-2xl shadow-lg border border-[#e8eaed] min-h-[380px]')}>
               {!fullscreen && (
                 <div className="px-6 py-3 border-b border-[#e8eaed] flex items-center justify-between bg-[#f8f9fa]">
                   <span className="font-medium text-[#202124] text-sm">{slide.title}</span>
                   <span className="text-xs text-[#80868b]">{slideIdx + 1} / {slides.length}</span>
                 </div>
               )}
-
               <div className={'flex-1 p-8 overflow-auto ' + (fullscreen ? 'text-white' : 'text-[#202124]')}>
                 {slide.imageUrls.length > 0 && (
                   <div className={'flex flex-wrap gap-3 mb-6 ' + (slide.imageUrls.length === 1 ? 'justify-center' : '')}>
                     {slide.imageUrls.map((src, ii) => (
-                      <img key={ii} src={src} alt=""
-                        className={
-                          'rounded-lg object-contain ' +
-                          (fullscreen ? 'max-h-[40vh] max-w-full shadow-lg' : 'max-h-48 max-w-full border border-[#e8eaed]')
-                        }
-                      />
+                      <img key={ii} src={src} alt="" className={'rounded-lg object-contain ' + (fullscreen ? 'max-h-[40vh] max-w-full shadow-lg' : 'max-h-48 max-w-full border border-[#e8eaed]')} />
                     ))}
                   </div>
                 )}
                 <div className={'space-y-3 ' + (fullscreen ? 'text-center max-w-3xl mx-auto' : '')}>
                   {slide.paragraphs.map((p, pi) => (
-                    <p key={pi}
-                      className={
-                        (pi === 0 ? 'text-xl font-medium leading-snug ' : 'text-[15px] leading-relaxed ') +
-                        (fullscreen ? (pi === 0 ? 'text-white text-2xl mb-4' : 'text-white/90') : '')
-                      }
-                    >{p}</p>
+                    <p key={pi} className={(pi === 0 ? 'text-xl font-medium leading-snug ' : 'text-[15px] leading-relaxed ') + (fullscreen ? (pi === 0 ? 'text-white text-2xl mb-4' : 'text-white/90') : '')}>{p}</p>
                   ))}
                 </div>
               </div>
             </div>
-
             <div className="flex items-center justify-center gap-3">
               <button type="button" disabled={slideIdx === 0} onClick={() => setSlideIdx(i => Math.max(0, i - 1))}
                 className={'h-10 px-4 rounded-full text-sm font-medium disabled:opacity-40 flex items-center gap-1 ' + (fullscreen ? 'bg-white/10 text-white hover:bg-white/20' : 'border border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f1f3f4]')}>
@@ -366,8 +378,7 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
               <div className="flex gap-1.5 max-w-xs overflow-x-auto py-1">
                 {slides.map((_, i) => (
                   <button key={i} type="button" onClick={() => setSlideIdx(i)}
-                    className={'w-2 h-2 rounded-full shrink-0 transition-all ' + (i === slideIdx ? (fullscreen ? 'bg-white w-4' : 'bg-[#1a73e8] w-4') : (fullscreen ? 'bg-white/30' : 'bg-[#dadce0]'))}
-                  />
+                    className={'w-2 h-2 rounded-full shrink-0 transition-all ' + (i === slideIdx ? (fullscreen ? 'bg-white w-4' : 'bg-[#1a73e8] w-4') : (fullscreen ? 'bg-white/30' : 'bg-[#dadce0]'))} />
                 ))}
               </div>
               <button type="button" disabled={slideIdx >= slides.length - 1} onClick={() => setSlideIdx(i => Math.min(slides.length - 1, i + 1))}
@@ -375,24 +386,14 @@ export default function FilePreview({ file, onClose, onUpdated }: Props) {
                 Siguiente <ChevronRight size={16} />
               </button>
             </div>
-
-            {!fullscreen && (
-              <p className="text-center text-xs text-[#80868b] max-w-md">
-                Contenido (texto unido por parrafo + imagenes). El diseno exacto de PowerPoint requiere descargar el archivo.
-                Flechas del teclado o boton Presentar.
-              </p>
-            )}
           </div>
         )}
-
         {!loading && !error && officeLegacy && (
           <div className="bg-white rounded-xl shadow p-10 max-w-md text-center">
             <p className="text-[#202124] font-medium mb-2">{file.name}</p>
-            <p className="text-sm text-[#5f6368] mb-6">Formato antiguo. Guardalo como .pptx / .docx / .xlsx.</p>
             <button type="button" onClick={download} className="h-10 px-6 rounded-full bg-[#1a73e8] text-white text-sm font-medium">Descargar</button>
           </div>
         )}
-
         {!loading && !error && !img && !pdf && !txt && !docx && !xlsx && !pptx && !officeLegacy && url && (
           <div className="bg-white rounded-xl shadow p-10 max-w-md text-center">
             <p className="text-[#202124] font-medium mb-2">{file.name}</p>
