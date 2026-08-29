@@ -1,24 +1,35 @@
 # Sistema de Capacitaciones v2
 
-Sistema profesional de gestión de capacitaciones.
+Sistema profesional de gestión de capacitaciones (local-first).
 
-## Estructura
+## Estructura de navegación
 
-- **INICIO**: Dashboard + Grafo de conocimiento
-- **CRONOGRAMA**: Tabla profesional anual (ID, Tema, Fecha/Periodo, Responsable)
-- **EXAMENES**: Constructor de exámenes tipo Forms
-- **DATA STORAGE**: Carpetas automáticas por año y tema
+| Sección        | Descripción |
+|----------------|-------------|
+| **INICIO**     | Dashboard (calendario + métricas) + Grafo de conocimiento |
+| **CRONOGRAMA** | Tabla profesional anual (ID, Tema, Fecha/Periodo, Responsable) + export Excel/Word/PDF |
+| **EXAMENES**   | Constructor de exámenes tipo Forms, enlazados a capacitaciones |
+| **DATA STORAGE** | Carpetas automáticas por año → tema (materiales PPTX, Word, videos…) |
 
 ## Stack
 
-- Next.js 15 + React 19 + TypeScript
-- Tailwind CSS v4 + shadcn/ui
+- React 19 + Vite 6 + TypeScript
+- Tailwind CSS v4
 - TanStack Table
-- IndexedDB (local-first)
+- Dexie (IndexedDB)
+- React Router 7
+- Lucide icons
 
-## Arranque
+## Arranque rápido
 
 ```bash
 npm install
 npm run dev
 ```
+
+Abre http://localhost:5173
+
+## Estado actual
+
+Scaffold base con layout, sidebar y páginas placeholder.  
+Siguiente: IndexedDB real, CRUD de cronograma, modal de visualización completo y auto-creación de carpetas.
