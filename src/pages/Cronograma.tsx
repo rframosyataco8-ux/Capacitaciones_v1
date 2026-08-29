@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   Plus,
-  Download,
   Eye,
   Pencil,
   Trash2,
@@ -9,144 +8,124 @@ import {
   FileSpreadsheet,
   FileText,
   FileType,
+  X,
 } from 'lucide-react'
 
-// Datos de ejemplo mientras se conecta IndexedDB
 const DEMO = [
   {
     id: 'CAP-2026-001',
-    tema: 'Inducción Seguridad Industrial',
-    fecha: '2026-02-10 / 2026-02-12',
-    responsable: 'Ing. María Torres',
+    tema: 'Inducci\u00f3n Seguridad Industrial',
+    fecha: '10–12 Feb 2026',
+    responsable: 'Ing. Mar\u00eda Torres',
   },
   {
     id: 'CAP-2026-002',
-    tema: 'Buenas Prácticas de Manufactura',
-    fecha: '2026-03-05',
+    tema: 'Buenas Pr\u00e1cticas de Manufactura',
+    fecha: '05 Mar 2026',
     responsable: 'Lic. Carlos Ruiz',
   },
   {
     id: 'CAP-2026-003',
-    tema: 'Manejo de Residuos Sólidos',
-    fecha: '2026-04-15 / 2026-04-16',
+    tema: 'Manejo de Residuos S\u00f3lidos',
+    fecha: '15–16 Abr 2026',
     responsable: 'Ing. Ana Paredes',
+  },
+  {
+    id: 'CAP-2026-004',
+    tema: 'Calidad e Inocuidad Alimentaria',
+    fecha: '20 May 2026',
+    responsable: 'Q.F. Luis Mendoza',
   },
 ]
 
 export default function Cronograma() {
   const [year, setYear] = useState(2026)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<(typeof DEMO)[0] | null>(null)
 
   return (
     <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-[#e8eaed] px-8 py-5 shrink-0">
+      {/* Header */}
+      <div className="bg-white border-b border-[var(--border)] px-7 py-5 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-normal text-[#202124]">Cronograma</h1>
-            <p className="text-sm text-[#5f6368] mt-0.5">
-              Plan anual de capacitaciones · Tabla profesional
+            <h1 className="text-[22px] font-semibold text-[var(--text)] tracking-tight">Cronograma</h1>
+            <p className="text-[13px] text-[var(--text-secondary)] mt-0.5">
+              Plan anual de capacitaciones
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={year}
               onChange={(e) => setYear(+e.target.value)}
-              className="h-9 px-3 rounded-lg border border-[#dadce0] text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-[#e8f0fe] bg-white"
+              className="input w-[100px]"
             >
               {[2025, 2026, 2027, 2028].map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
+                <option key={y} value={y}>{y}</option>
               ))}
             </select>
-            <button
-              type="button"
-              className="h-9 px-4 rounded-lg bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1765cc] flex items-center gap-2"
-            >
-              <Plus size={16} />
-              Nueva capacitación
+            <button type="button" className="btn btn-primary">
+              <Plus size={15} strokeWidth={2.2} />
+              Nueva capacitaci\u00f3n
             </button>
-            <div className="h-6 w-px bg-[#dadce0] mx-1" />
-            <button
-              type="button"
-              className="h-9 px-3 rounded-lg border border-[#dadce0] text-[#5f6368] text-sm font-medium hover:bg-[#f1f3f4] flex items-center gap-1.5"
-              title="Exportar Excel"
-            >
-              <FileSpreadsheet size={15} />
+            <div className="h-5 w-px bg-[var(--border)] mx-0.5" />
+            <button type="button" className="btn btn-ghost" title="Exportar Excel">
+              <FileSpreadsheet size={14} />
               Excel
             </button>
-            <button
-              type="button"
-              className="h-9 px-3 rounded-lg border border-[#dadce0] text-[#5f6368] text-sm font-medium hover:bg-[#f1f3f4] flex items-center gap-1.5"
-              title="Exportar Word"
-            >
-              <FileText size={15} />
+            <button type="button" className="btn btn-ghost" title="Exportar Word">
+              <FileText size={14} />
               Word
             </button>
-            <button
-              type="button"
-              className="h-9 px-3 rounded-lg border border-[#dadce0] text-[#5f6368] text-sm font-medium hover:bg-[#f1f3f4] flex items-center gap-1.5"
-              title="Exportar PDF"
-            >
-              <FileType size={15} />
+            <button type="button" className="btn btn-ghost" title="Exportar PDF">
+              <FileType size={14} />
               PDF
             </button>
           </div>
         </div>
       </div>
 
+      {/* Table */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="bg-white rounded-xl border border-[#e8eaed] shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="table-wrap animate-in">
+          <table className="w-full text-[13px]">
             <thead>
-              <tr className="bg-[#f8f9fa] border-b border-[#e8eaed] text-left">
-                <th className="px-5 py-3.5 font-medium text-[#5f6368] w-[140px]">ID</th>
-                <th className="px-5 py-3.5 font-medium text-[#5f6368]">TEMA</th>
-                <th className="px-5 py-3.5 font-medium text-[#5f6368] w-[200px]">FECHA O PERIODO</th>
-                <th className="px-5 py-3.5 font-medium text-[#5f6368] w-[180px]">RESPONSABLE</th>
-                <th className="px-5 py-3.5 font-medium text-[#5f6368] w-[160px] text-right">ACCIONES</th>
+              <tr className="bg-[#f9fafb] border-b border-[var(--border)] text-left">
+                <th className="px-5 py-3.5 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[130px]">ID</th>
+                <th className="px-5 py-3.5 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Tema</th>
+                <th className="px-5 py-3.5 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[160px]">Fecha o periodo</th>
+                <th className="px-5 py-3.5 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[170px]">Responsable</th>
+                <th className="px-5 py-3.5 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[150px] text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {DEMO.map((row) => (
+              {DEMO.map((row, i) => (
                 <tr
                   key={row.id}
-                  className="border-b border-[#e8eaed] last:border-0 hover:bg-[#f8f9fa] transition-colors"
+                  className="border-b border-[var(--border)] last:border-0 hover:bg-[#f9fafb] transition-colors duration-150 group"
+                  style={{ animationDelay: `${i * 0.04}s` }}
                 >
-                  <td className="px-5 py-3.5 font-mono text-xs text-[#5f6368]">{row.id}</td>
-                  <td className="px-5 py-3.5 font-medium text-[#202124]">{row.tema}</td>
-                  <td className="px-5 py-3.5 text-[#5f6368]">{row.fecha}</td>
-                  <td className="px-5 py-3.5 text-[#5f6368]">{row.responsable}</td>
+                  <td className="px-5 py-3.5 font-mono text-[12px] text-[var(--text-secondary)]">{row.id}</td>
+                  <td className="px-5 py-3.5 font-medium text-[var(--text)]">{row.tema}</td>
+                  <td className="px-5 py-3.5 text-[var(--text-secondary)]">{row.fecha}</td>
+                  <td className="px-5 py-3.5 text-[var(--text-secondary)]">{row.responsable}</td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         title="Visualizar"
-                        onClick={() => setSelected(row.id)}
-                        className="p-1.5 rounded-full text-[#1967d2] hover:bg-[#e8f0fe]"
+                        onClick={() => setSelected(row)}
+                        className="btn-icon text-[var(--primary)] hover:bg-[var(--primary-soft)]"
                       >
-                        <Eye size={16} />
+                        <Eye size={15} />
                       </button>
-                      <button
-                        type="button"
-                        title="Editar"
-                        className="p-1.5 rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-                      >
-                        <Pencil size={16} />
+                      <button type="button" title="Editar" className="btn-icon text-[var(--text-secondary)] hover:bg-[#f3f4f6]">
+                        <Pencil size={15} />
                       </button>
-                      <button
-                        type="button"
-                        title="Guardar"
-                        className="p-1.5 rounded-full text-[#188038] hover:bg-[#e6f4ea]"
-                      >
-                        <Save size={16} />
+                      <button type="button" title="Guardar" className="btn-icon text-[var(--success)] hover:bg-[var(--success-soft)]">
+                        <Save size={15} />
                       </button>
-                      <button
-                        type="button"
-                        title="Eliminar"
-                        className="p-1.5 rounded-full text-[#d93025] hover:bg-[#fce8e6]"
-                      >
-                        <Trash2 size={16} />
+                      <button type="button" title="Eliminar" className="btn-icon text-[var(--danger)] hover:bg-[var(--danger-soft)]">
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </td>
@@ -154,37 +133,47 @@ export default function Cronograma() {
               ))}
             </tbody>
           </table>
-          {DEMO.length === 0 && (
-            <div className="p-16 text-center text-[#80868b] text-sm">
-              No hay capacitaciones para {year}. Crea la primera o genera la plantilla anual.
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Modal Visualizar (placeholder) */}
+      {/* Modal Visualizar */}
       {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/40 backdrop-blur-[2px]"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8eaed]">
-              <h2 className="text-lg font-medium">Detalle de capacitación</h2>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="p-1.5 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]"
-              >
-                ✕
+        <div className="modal-backdrop" onClick={() => setSelected(null)}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <h2 className="text-[15px] font-semibold text-[var(--text)]">Detalle de capacitaci\u00f3n</h2>
+              <button type="button" onClick={() => setSelected(null)} className="btn-icon text-[var(--text-secondary)]">
+                <X size={16} />
               </button>
             </div>
-            <div className="p-5 space-y-3 text-sm">
-              <p className="text-[#5f6368]">ID: <span className="text-[#202124] font-mono">{selected}</span></p>
-              <p className="text-[#80868b]">Aquí se mostrarán todos los datos + enlaces a examen, PPTX, Word, video, etc.</p>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-[13px]">
+                <div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">ID</div>
+                  <div className="font-mono text-[var(--text)]">{selected.id}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Fecha / Periodo</div>
+                  <div className="text-[var(--text)]">{selected.fecha}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Tema</div>
+                  <div className="font-medium text-[var(--text)]">{selected.tema}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Responsable</div>
+                  <div className="text-[var(--text)]">{selected.responsable}</div>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-[var(--border)]">
+                <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Accesos directos</div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 rounded-md bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)]">Examen</span>
+                  <span className="px-2.5 py-1 rounded-md bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)]">PPTX</span>
+                  <span className="px-2.5 py-1 rounded-md bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)]">Word</span>
+                  <span className="px-2.5 py-1 rounded-md bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)]">Video</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
