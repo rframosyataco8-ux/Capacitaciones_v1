@@ -21,6 +21,7 @@ import {
   type MaterialFolder,
 } from '../lib/db'
 import KnowledgeGraph from '../components/KnowledgeGraph'
+import { CardsSkeleton } from '../components/Skeleton'
 
 type SubView = 'dashboard' | 'grafo'
 
@@ -49,40 +50,55 @@ export default function Inicio() {
   const [exams, setExams] = useState<Exam[]>([])
   const [folders, setFolders] = useState<MaterialFolder[]>([])
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
-      await seedIfEmpty()
-      const s = await getStats(year)
-      setStats(s)
-      const caps = await listCapacitaciones(year)
-      setTemas(caps)
-      setExams(await listExams())
-      setFolders(await listFolders(year))
+      try {
+        await seedIfEmpty()
+        if (cancelled) return
+        const s = await getStats(year)
+        const caps = await listCapacitaciones(year)
+        const ex = await listExams()
+        const fo = await listFolders(year)
+        if (cancelled) return
+        setStats(s)
+        setTemas(caps)
+        setExams(ex)
+        setFolders(fo)
 
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-      const limit = new Date(now)
-      limit.setDate(limit.getDate() + 14)
-      const list: Proxima[] = []
-      for (const c of caps) {
-        for (const sess of c.sessions || []) {
-          if (sess.status === 'Realizada') continue
-          const d = new Date(sess.date + 'T12:00:00')
-          if (d >= now && d <= limit) {
-            list.push({
-              tema: c.tema,
-              date: sess.date,
-              responsable: c.responsable,
-              codigo: c.codigo,
-            })
+        const now = new Date()
+        now.setHours(0, 0, 0, 0)
+        const limit = new Date(now)
+        limit.setDate(limit.getDate() + 14)
+        const list: Proxima[] = []
+        for (const c of caps) {
+          for (const sess of c.sessions || []) {
+            if (sess.status === 'Realizada') continue
+            const d = new Date(sess.date + 'T12:00:00')
+            if (d >= now && d <= limit) {
+              list.push({
+                tema: c.tema,
+                date: sess.date,
+                responsable: c.responsable,
+                codigo: c.codigo,
+              })
+            }
           }
         }
+        list.sort((a, b) => a.date.localeCompare(b.date))
+        setProximasList(list.slice(0, 8))
+        setReady(true)
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) {
+          setError('No se pudieron cargar los datos. Recarga la página.')
+          setReady(true)
+        }
       }
-      list.sort((a, b) => a.date.localeCompare(b.date))
-      setProximasList(list.slice(0, 8))
-      setReady(true)
     })()
+    return () => { cancelled = true }
   }, [year])
 
   const cards = [
@@ -115,6 +131,12 @@ export default function Inicio() {
       </div>
 
       <div className="flex-1 overflow-auto p-7">
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl text-[13px]" style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}>
+            {error}
+          </div>
+        )}
+
         {sub === 'dashboard' && (
           <div className="animate-in max-w-6xl">
             <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -133,7 +155,7 @@ export default function Inicio() {
             </div>
 
             {!ready ? (
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando métricas…</p>
+              <CardsSkeleton />
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -212,11 +234,11 @@ export default function Inicio() {
             <div className="mb-5">
               <h1 className="text-[22px] font-semibold tracking-tight">Grafo de conocimiento</h1>
               <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Temas del programa conectados con exámenes y carpetas de materiales. Clic en un nodo para resaltar enlaces.
+                Temas conectados con exámenes y carpetas. Clic en un nodo para resaltar enlaces.
               </p>
             </div>
             {!ready ? (
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando grafo…</p>
+              <div className="card p-16 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Cargando grafo…</div>
             ) : (
               <KnowledgeGraph temas={temas} exams={exams} folders={folders} />
             )}
