@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
-// @ts-expect-error types bundled inconsistently
 import autoTable from 'jspdf-autotable'
 import type { Capacitacion, Session } from './db'
 

@@ -115,6 +115,7 @@ export default function Sidebar() {
             collapsed ? 'justify-center px-0' : ''
           }`}
           title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           {!collapsed && (

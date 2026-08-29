@@ -14,6 +14,7 @@ export default function App() {
         <Route path="cronograma" element={<Cronograma />} />
         <Route path="examenes" element={<Examenes />} />
         <Route path="data-storage" element={<DataStorage />} />
+        <Route path="*" element={<Navigate to="/inicio" replace />} />
       </Route>
     </Routes>
   )

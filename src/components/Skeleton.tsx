@@ -1,4 +1,6 @@
-export function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+import type { CSSProperties } from 'react'
+
+export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return (
     <div
       className={`rounded-lg animate-pulse ${className}`}

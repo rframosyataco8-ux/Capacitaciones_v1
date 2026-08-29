@@ -12,6 +12,10 @@ import { exportIcs, googleCalendarUrl } from '../lib/calendar'
 import { confirmar, mensajes } from '../lib/confirm'
 import { useToast } from '../lib/toast'
 import { fieldErrors, temaSchema } from '../lib/validate'
+import CronoToolbar from '../components/CronoToolbar'
+import CronogramaMonth from './CronogramaMonth'
+import { useCronoFilters } from '../hooks/useCronoFilters'
+import type { FilterKey, ViewMode } from '../hooks/useCronoFilters'
 
 function getSessions(c: Capacitacion): Session[] {
   if (c.sessions?.length) return c.sessions
@@ -37,6 +41,8 @@ export default function Cronograma() {
   const [rows, setRows] = useState<Capacitacion[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<FilterKey>('todos')
+  const [view, setView] = useState<ViewMode>('lista')
   const [selected, setSelected] = useState<Capacitacion | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Capacitacion | null>(null)
@@ -81,22 +87,8 @@ export default function Cronograma() {
 
   useEffect(() => { refresh() }, [refresh])
 
-  const filtered = useMemo(
-    () =>
-      rows.filter(
-        (r) =>
-          !search ||
-          r.tema.toLowerCase().includes(search.toLowerCase()) ||
-          r.responsable.toLowerCase().includes(search.toLowerCase()) ||
-          r.codigo.toLowerCase().includes(search.toLowerCase())
-      ),
-    [rows, search]
-  )
-
-  const totalSesiones = useMemo(
-    () => filtered.reduce((acc, r) => acc + getSessions(r).length, 0),
-    [filtered]
-  )
+  // Usa el hook centralizado de filtros
+  const { filtered, totalSesiones } = useCronoFilters(rows, search, filter)
 
   async function createAnnualProgram() {
     try {
@@ -286,7 +278,7 @@ export default function Cronograma() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select value={year} onChange={(e) => setYear(+e.target.value)} className="input w-[96px] font-medium">
+              <select value={year} onChange={(e) => setYear(+e.target.value)} className="input w-[96px] font-medium" aria-label="Seleccionar año">
                 {[2023, 2024, 2025, 2026, 2027, 2028].map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -299,17 +291,23 @@ export default function Cronograma() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-              <input className="input w-full pl-9" placeholder="Buscar tema o responsable…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <input
+                className="input w-full pl-9"
+                placeholder="Buscar tema o responsable…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Buscar temas"
+              />
             </div>
             <div className="flex-1" />
             <button type="button" className="btn btn-ghost" onClick={() => { setEditing(null); setForm({ tema: '', responsable: '', fechas: '' }); setFormErrors({}); setFormOpen(true) }}>
               <Plus size={14} /> Agregar tema
             </button>
             <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
-            <button type="button" className="btn btn-ghost" onClick={() => doExport('excel')} title="Excel"><FileSpreadsheet size={14} /> Excel</button>
-            <button type="button" className="btn btn-ghost" onClick={() => doExport('word')} title="Word"><FileText size={14} /> Word</button>
-            <button type="button" className="btn btn-ghost" onClick={() => doExport('pdf')} title="PDF"><FileType size={14} /> PDF</button>
-            <button type="button" className="btn btn-ghost" onClick={() => doExport('ics')} title="Google Calendar / Outlook (.ics)">
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('excel')} title="Exportar Excel" aria-label="Exportar Excel"><FileSpreadsheet size={14} /> Excel</button>
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('word')} title="Exportar Word" aria-label="Exportar Word"><FileText size={14} /> Word</button>
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('pdf')} title="Exportar PDF" aria-label="Exportar PDF"><FileType size={14} /> PDF</button>
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('ics')} title="Google Calendar / Outlook (.ics)" aria-label="Exportar calendario ICS">
               <CalendarPlus size={14} /> Calendario
             </button>
           </div>
@@ -326,125 +324,143 @@ export default function Cronograma() {
             <button type="button" className="btn btn-primary mt-4" onClick={() => { setNewYear(year); setCopyFrom(2026); setYearModal(true) }}>Crear programa {year}</button>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="th-row text-left">
-                  <th className="px-3 py-3 w-8" />
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[28px]" style={{ color: 'var(--text-muted)' }}>#</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px]" style={{ color: 'var(--text-muted)' }}>ID</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Tema</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[160px]" style={{ color: 'var(--text-muted)' }}>Sesiones</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[150px]" style={{ color: 'var(--text-muted)' }}>Responsable</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px] text-right" style={{ color: 'var(--text-muted)' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => {
-                  const id = row.id ?? row.item
-                  const sess = getSessions(row)
-                  const n = sess.length
-                  const hasMulti = n > 1
-                  const done = sess.filter((s) => s.status === 'Realizada').length
-                  const isOpen = expanded[id]
-                  return (
-                    <Fragment key={row.id ?? row.codigo}>
-                      <tr className="border-b tr-hover group" style={{ borderColor: 'var(--border)' }}>
-                        <td className="px-2 py-3">
-                          {hasMulti ? (
-                            <button type="button" onClick={() => setExpanded((p) => ({ ...p, [id]: !p[id] }))} className="btn-icon" style={{ color: 'var(--text-muted)' }}>
-                              {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                            </button>
-                          ) : <span className="w-8 inline-block" />}
-                        </td>
-                        <td className="px-3 py-3" style={{ color: 'var(--text-muted)' }}>{row.item}</td>
-                        <td className="px-3 py-3 font-mono text-[12px]" style={{ color: 'var(--text-secondary)' }}>{row.codigo}</td>
-                        <td className="px-3 py-3">
-                          <div className="font-medium leading-snug">{row.tema}</div>
-                          {hasMulti && (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <RefreshCw size={11} style={{ color: 'var(--primary)' }} />
-                              <span className="text-[11px] font-medium" style={{ color: 'var(--primary-text)' }}>Refuerzo · {done}/{n} realizadas</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          {hasMulti ? (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{n} sesiones</span>
-                          ) : (
-                            <span style={{ color: 'var(--text-secondary)' }}>{sess[0] ? formatDateShort(sess[0].date) : '—'}</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3" style={{ color: 'var(--text-secondary)' }}>{row.responsable}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex justify-end gap-0.5 opacity-50 group-hover:opacity-100">
-                            <button type="button" title="Ver" onClick={() => setSelected(row)} className="btn-icon" style={{ color: 'var(--primary)' }}><Eye size={15} /></button>
-                            <button type="button" title="Editar" onClick={() => openEdit(row)} className="btn-icon"><Pencil size={15} /></button>
-                            <button type="button" title="Eliminar" onClick={() => row.id && handleDelete(row.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                      {hasMulti && isOpen && (
-                        <tr style={{ background: 'var(--surface-2)' }}>
-                          <td colSpan={7} className="px-6 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                            <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Sesiones (clic = realizada · icono calendario = Google)</div>
-                            <div className="flex flex-wrap gap-2">
-                              {sess.map((s, i) => (
-                                <div key={s.date + i} className="inline-flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleSessionStatus(row, s.date)}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px]"
-                                    style={{
-                                      background: s.status === 'Realizada' ? 'var(--success-soft)' : 'var(--surface)',
-                                      borderColor: s.status === 'Realizada' ? 'transparent' : 'var(--border)',
-                                      color: s.status === 'Realizada' ? 'var(--success)' : 'var(--text)',
-                                    }}
-                                  >
-                                    {s.status === 'Realizada' ? <Check size={12} /> : <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{i + 1}</span>}
-                                    {formatDateFull(s.date)}
-                                  </button>
-                                  <a
-                                    href={googleCalendarUrl({
-                                      title: `[ROMEX] ${row.tema}`,
-                                      date: s.date,
-                                      details: `Responsable: ${row.responsable}\nCódigo: ${row.codigo}`,
-                                    })}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn-icon"
-                                    title="Añadir a Google Calendar"
-                                    style={{ color: 'var(--primary)' }}
-                                  >
-                                    <CalendarPlus size={14} />
-                                  </a>
+          <>
+            {/* Toolbar con filtros y vista — ahora activo */}
+            <CronoToolbar filter={filter} setFilter={setFilter} view={view} setView={setView} />
+
+            {view === 'meses' ? (
+              <CronogramaMonth rows={filtered} year={year} onSelect={setSelected} />
+            ) : (
+              <div className="table-wrap">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="th-row text-left">
+                      <th className="px-3 py-3 w-8" />
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[28px]" style={{ color: 'var(--text-muted)' }}>#</th>
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px]" style={{ color: 'var(--text-muted)' }}>ID</th>
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Tema</th>
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[160px]" style={{ color: 'var(--text-muted)' }}>Sesiones</th>
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[150px]" style={{ color: 'var(--text-muted)' }}>Responsable</th>
+                      <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px] text-right" style={{ color: 'var(--text-muted)' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((row) => {
+                      const id = row.id ?? row.item
+                      const sess = getSessions(row)
+                      const n = sess.length
+                      const hasMulti = n > 1
+                      const done = sess.filter((s) => s.status === 'Realizada').length
+                      const isOpen = expanded[id]
+                      return (
+                        <Fragment key={row.id ?? row.codigo}>
+                          <tr className="border-b tr-hover group" style={{ borderColor: 'var(--border)' }}>
+                            <td className="px-2 py-3">
+                              {hasMulti ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpanded((p) => ({ ...p, [id]: !p[id] }))}
+                                  className="btn-icon"
+                                  style={{ color: 'var(--text-muted)' }}
+                                  aria-label={isOpen ? 'Colapsar sesiones' : 'Expandir sesiones'}
+                                >
+                                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                </button>
+                              ) : <span className="w-8 inline-block" />}
+                            </td>
+                            <td className="px-3 py-3" style={{ color: 'var(--text-muted)' }}>{row.item}</td>
+                            <td className="px-3 py-3 font-mono text-[12px]" style={{ color: 'var(--text-secondary)' }}>{row.codigo}</td>
+                            <td className="px-3 py-3">
+                              <div className="font-medium leading-snug">{row.tema}</div>
+                              {hasMulti && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <RefreshCw size={11} style={{ color: 'var(--primary)' }} />
+                                  <span className="text-[11px] font-medium" style={{ color: 'var(--primary-text)' }}>Refuerzo · {done}/{n} realizadas</span>
                                 </div>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {rows.length > 0 && (
-          <div className="mt-3 flex justify-between text-[12px]" style={{ color: 'var(--text-muted)' }}>
-            <span>{filtered.length} temas · {totalSesiones} sesiones · {year}</span>
-            <span>Documento controlado · Aseguramiento de Calidad</span>
-          </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              {hasMulti ? (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{n} sesiones</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-secondary)' }}>{sess[0] ? formatDateShort(sess[0].date) : '—'}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3" style={{ color: 'var(--text-secondary)' }}>{row.responsable}</td>
+                            <td className="px-3 py-3">
+                              <div className="flex justify-end gap-0.5 opacity-50 group-hover:opacity-100">
+                                <button type="button" title="Ver detalle" aria-label="Ver detalle" onClick={() => setSelected(row)} className="btn-icon" style={{ color: 'var(--primary)' }}><Eye size={15} /></button>
+                                <button type="button" title="Editar" aria-label="Editar tema" onClick={() => openEdit(row)} className="btn-icon"><Pencil size={15} /></button>
+                                <button type="button" title="Eliminar" aria-label="Eliminar tema" onClick={() => row.id && handleDelete(row.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                          {hasMulti && isOpen && (
+                            <tr style={{ background: 'var(--surface-2)' }}>
+                              <td colSpan={7} className="px-6 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Sesiones (clic = realizada · icono calendario = Google)</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {sess.map((s, i) => (
+                                    <div key={s.date + i} className="inline-flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSessionStatus(row, s.date)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px]"
+                                        aria-label={`Marcar sesión del ${formatDateFull(s.date)} como ${s.status === 'Realizada' ? 'programada' : 'realizada'}`}
+                                        style={{
+                                          background: s.status === 'Realizada' ? 'var(--success-soft)' : 'var(--surface)',
+                                          borderColor: s.status === 'Realizada' ? 'transparent' : 'var(--border)',
+                                          color: s.status === 'Realizada' ? 'var(--success)' : 'var(--text)',
+                                        }}
+                                      >
+                                        {s.status === 'Realizada' ? <Check size={12} /> : <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{i + 1}</span>}
+                                        {formatDateFull(s.date)}
+                                      </button>
+                                      <a
+                                        href={googleCalendarUrl({
+                                          title: `[ROMEX] ${row.tema}`,
+                                          date: s.date,
+                                          details: `Responsable: ${row.responsable}\nCódigo: ${row.codigo}`,
+                                        })}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-icon"
+                                        title="Añadir a Google Calendar"
+                                        aria-label="Añadir a Google Calendar"
+                                        style={{ color: 'var(--primary)' }}
+                                      >
+                                        <CalendarPlus size={14} />
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {rows.length > 0 && (
+              <div className="mt-3 flex justify-between text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                <span>{filtered.length} temas · {totalSesiones} sesiones · {year}</span>
+                <span>Documento controlado · Aseguramiento de Calidad</span>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {yearModal && (
-        <div className="modal-backdrop" onClick={() => setYearModal(false)}>
+        <div className="modal-backdrop" onClick={() => setYearModal(false)} role="dialog" aria-modal="true" aria-labelledby="modal-nuevo-programa-titulo">
           <div className="modal-panel max-w-[420px]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h2 className="text-[15px] font-semibold">Nuevo programa anual</h2>
-              <button type="button" onClick={() => setYearModal(false)} className="btn-icon"><X size={16} /></button>
+              <h2 id="modal-nuevo-programa-titulo" className="text-[15px] font-semibold">Nuevo programa anual</h2>
+              <button type="button" onClick={() => setYearModal(false)} className="btn-icon" aria-label="Cerrar"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-4">
               <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>Copia temas y sesiones de refuerzo a un año nuevo.</p>
@@ -468,11 +484,11 @@ export default function Cronograma() {
       )}
 
       {selected && (
-        <div className="modal-backdrop" onClick={() => setSelected(null)}>
+        <div className="modal-backdrop" onClick={() => setSelected(null)} role="dialog" aria-modal="true" aria-labelledby="modal-detalle-titulo">
           <div className="modal-panel max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h2 className="text-[15px] font-semibold">Detalle</h2>
-              <button type="button" onClick={() => setSelected(null)} className="btn-icon"><X size={16} /></button>
+              <h2 id="modal-detalle-titulo" className="text-[15px] font-semibold">Detalle</h2>
+              <button type="button" onClick={() => setSelected(null)} className="btn-icon" aria-label="Cerrar"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-3 text-[13px]">
               <div><span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>ID</span><div className="font-mono">{selected.codigo}</div></div>
@@ -485,6 +501,7 @@ export default function Cronograma() {
                     <div key={s.date + i} className="inline-flex items-center gap-1">
                       <button type="button" onClick={() => toggleSessionStatus(selected, s.date)}
                         className="px-2 py-0.5 rounded-md text-[12px] font-medium"
+                        aria-label={`${formatDateFull(s.date)} — ${s.status}`}
                         style={{
                           background: s.status === 'Realizada' ? 'var(--success-soft)' : 'var(--primary-soft)',
                           color: s.status === 'Realizada' ? 'var(--success)' : 'var(--primary-text)',
@@ -496,6 +513,7 @@ export default function Cronograma() {
                         rel="noopener noreferrer"
                         className="btn-icon"
                         title="Google Calendar"
+                        aria-label="Añadir a Google Calendar"
                         style={{ color: 'var(--primary)', width: 28, height: 28 }}
                       ><CalendarPlus size={13} /></a>
                     </div>
@@ -512,11 +530,11 @@ export default function Cronograma() {
       )}
 
       {formOpen && (
-        <div className="modal-backdrop" onClick={closeForm}>
+        <div className="modal-backdrop" onClick={closeForm} role="dialog" aria-modal="true" aria-labelledby="modal-form-titulo">
           <div className="modal-panel max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h2 className="text-[15px] font-semibold">{editing ? 'Editar tema' : 'Agregar tema'}</h2>
-              <button type="button" onClick={closeForm} className="btn-icon"><X size={16} /></button>
+              <h2 id="modal-form-titulo" className="text-[15px] font-semibold">{editing ? 'Editar tema' : 'Agregar tema'}</h2>
+              <button type="button" onClick={closeForm} className="btn-icon" aria-label="Cerrar"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-4">
               <label className="block">
