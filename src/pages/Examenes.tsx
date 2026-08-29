@@ -5,12 +5,15 @@ import {
   type Exam, type Capacitacion, type ExamQuestion,
 } from '../lib/db'
 import { confirmar, mensajes } from '../lib/confirm'
+import { fieldErrors, examenSchema } from '../lib/validate'
+import { useToast } from '../lib/toast'
 
 function uid() {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export default function Examenes() {
+  const { toast } = useToast()
   const [exams, setExams] = useState<Exam[]>([])
   const [temas, setTemas] = useState<Capacitacion[]>([])
   const [loading, setLoading] = useState(true)
@@ -19,6 +22,7 @@ export default function Examenes() {
   const [titulo, setTitulo] = useState('')
   const [temaId, setTemaId] = useState<number | ''>('')
   const [preguntas, setPreguntas] = useState<ExamQuestion[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -36,6 +40,7 @@ export default function Examenes() {
     setTitulo('')
     setTemaId('')
     setPreguntas([{ id: uid(), tipo: 'multiple', texto: '', opciones: ['', '', '', ''], correcta: 0 }])
+    setErrors({})
     setFormOpen(true)
   }
 
@@ -44,15 +49,25 @@ export default function Examenes() {
     setTitulo(ex.titulo)
     setTemaId(ex.capacitacionId ?? '')
     setPreguntas(ex.preguntas?.length ? ex.preguntas : [])
+    setErrors({})
     setFormOpen(true)
   }
 
   async function handleSave() {
-    if (!titulo.trim()) return
+    const result = fieldErrors(examenSchema, {
+      titulo,
+      preguntas: preguntas.map((p) => ({ texto: p.texto })),
+    })
+    if (!result.ok) {
+      setErrors(result.errors)
+      toast(Object.values(result.errors)[0] || 'Revise el formulario', 'error')
+      return
+    }
+    setErrors({})
     const cap = temas.find((t) => t.id === temaId)
     await saveExam({
       id: editing?.id,
-      titulo: titulo.trim(),
+      titulo: result.data.titulo,
       capacitacionId: typeof temaId === 'number' ? temaId : null,
       tema: cap?.tema,
       estado: editing?.estado ?? 'Borrador',
@@ -61,12 +76,14 @@ export default function Examenes() {
     })
     setFormOpen(false)
     await refresh()
+    toast(editing ? 'Examen actualizado' : 'Examen creado', 'success')
   }
 
   async function handleDelete(id: number) {
     if (!confirmar(mensajes.eliminarExamen)) return
     await deleteExam(id)
     await refresh()
+    toast('Examen eliminado', 'success')
   }
 
   function updatePregunta(id: string, patch: Partial<ExamQuestion>) {
@@ -97,7 +114,7 @@ export default function Examenes() {
             <ClipboardList size={28} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-[14px] font-medium">Sin exámenes</p>
             <p className="text-[13px] mt-1 mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Crea un examen y enlázalo a un tema (ej. Sistema HACCP) para medir si el refuerzo funcionó.
+              Crea un examen y enlázalo a un tema para medir si el refuerzo funcionó.
             </p>
             <button type="button" className="btn btn-primary" onClick={openNew}>
               <Plus size={15} /> Crear examen
@@ -106,23 +123,15 @@ export default function Examenes() {
         ) : (
           <div className="table-wrap">
             {exams.map((ex) => (
-              <div
-                key={ex.id}
-                className="flex items-center gap-3 px-5 py-3.5 border-b last:border-0 tr-hover"
-                style={{ borderColor: 'var(--border)' }}
-              >
+              <div key={ex.id} className="flex items-center gap-3 px-5 py-3.5 border-b last:border-0 tr-hover" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-medium truncate">{ex.titulo}</div>
                   <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                     {ex.tema || 'Sin tema'} · {(ex.preguntas || []).length} preguntas · {ex.estado}
                   </div>
                 </div>
-                <button type="button" className="btn-icon" onClick={() => openEdit(ex)} title="Editar">
-                  <Pencil size={15} />
-                </button>
-                <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => ex.id && handleDelete(ex.id)} title="Eliminar">
-                  <Trash2 size={15} />
-                </button>
+                <button type="button" className="btn-icon" onClick={() => openEdit(ex)} title="Editar"><Pencil size={15} /></button>
+                <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => ex.id && handleDelete(ex.id)} title="Eliminar"><Trash2 size={15} /></button>
               </div>
             ))}
           </div>
@@ -139,7 +148,14 @@ export default function Examenes() {
             <div className="p-5 space-y-4">
               <label className="block">
                 <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Título *</span>
-                <input className="input w-full" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Examen HACCP - Refuerzo Q1" />
+                <input
+                  className="input w-full"
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                  placeholder="Examen HACCP - Refuerzo Q1"
+                  style={errors.titulo ? { borderColor: 'var(--danger)' } : undefined}
+                />
+                {errors.titulo && <p className="text-[11px] mt-1" style={{ color: 'var(--danger)' }}>{errors.titulo}</p>}
               </label>
               <label className="block">
                 <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Tema del programa</span>
@@ -154,6 +170,7 @@ export default function Examenes() {
                   ))}
                 </select>
               </label>
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Preguntas</span>
@@ -162,21 +179,16 @@ export default function Examenes() {
                     className="text-[12px] font-semibold"
                     style={{ color: 'var(--primary-text)' }}
                     onClick={() => setPreguntas((p) => [...p, { id: uid(), tipo: 'multiple', texto: '', opciones: ['', '', '', ''], correcta: 0 }])}
-                  >
-                    + Añadir
-                  </button>
+                  >+ Añadir</button>
                 </div>
+                {errors.preguntas && <p className="text-[11px] mb-2" style={{ color: 'var(--danger)' }}>{errors.preguntas}</p>}
                 <div className="space-y-3">
                   {preguntas.map((p, idx) => (
                     <div key={p.id} className="rounded-lg p-3" style={{ border: '1px solid var(--border)' }}>
                       <div className="flex gap-2 mb-2">
                         <span className="text-[12px] pt-2" style={{ color: 'var(--text-muted)' }}>{idx + 1}.</span>
                         <input className="input flex-1" value={p.texto} onChange={(e) => updatePregunta(p.id, { texto: e.target.value })} placeholder="Enunciado" />
-                        <select
-                          className="input w-[130px]"
-                          value={p.tipo}
-                          onChange={(e) => updatePregunta(p.id, { tipo: e.target.value as ExamQuestion['tipo'] })}
-                        >
+                        <select className="input w-[130px]" value={p.tipo} onChange={(e) => updatePregunta(p.id, { tipo: e.target.value as ExamQuestion['tipo'] })}>
                           <option value="multiple">Múltiple</option>
                           <option value="verdadero_falso">V / F</option>
                           <option value="abierta">Abierta</option>
@@ -203,11 +215,10 @@ export default function Examenes() {
                   ))}
                 </div>
               </div>
+
               <div className="flex gap-2 pt-2">
                 <button type="button" className="btn btn-ghost flex-1" onClick={() => setFormOpen(false)}>Cancelar</button>
-                <button type="button" className="btn btn-primary flex-1" onClick={handleSave}>
-                  <Save size={14} /> Guardar
-                </button>
+                <button type="button" className="btn btn-primary flex-1" onClick={handleSave}><Save size={14} /> Guardar</button>
               </div>
             </div>
           </div>
