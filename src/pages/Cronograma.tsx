@@ -9,6 +9,7 @@ import {
 } from '../lib/db'
 import { exportExcel, exportPDF, exportWord } from '../lib/exportCrono'
 import { confirmar, mensajes } from '../lib/confirm'
+import { useToast } from '../lib/toast'
 
 function getSessions(c: Capacitacion): Session[] {
   if (c.sessions?.length) return c.sessions
@@ -29,6 +30,7 @@ function formatDateShort(d: string) {
 }
 
 export default function Cronograma() {
+  const { toast } = useToast()
   const [year, setYear] = useState(2026)
   const [rows, setRows] = useState<Capacitacion[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,56 +96,62 @@ export default function Cronograma() {
   )
 
   async function createAnnualProgram() {
-    const existing = await listCapacitaciones(newYear)
-    if (existing.length > 0) {
-      if (!confirmar(mensajes.reemplazarPrograma(newYear, existing.length))) return
-      await db.capacitaciones.where('year').equals(newYear).delete()
-      await db.folders.where('year').equals(newYear).delete()
-    }
-    const source = await listCapacitaciones(copyFrom)
-    const now = new Date().toISOString()
-    if (source.length === 0) {
+    try {
+      const existing = await listCapacitaciones(newYear)
+      if (existing.length > 0) {
+        if (!confirmar(mensajes.reemplazarPrograma(newYear, existing.length))) return
+        await db.capacitaciones.where('year').equals(newYear).delete()
+        await db.folders.where('year').equals(newYear).delete()
+      }
+      const source = await listCapacitaciones(copyFrom)
+      const now = new Date().toISOString()
+      if (source.length === 0) {
+        setYear(newYear)
+        setYearModal(false)
+        toast(`Programa ${newYear} listo (vacío)`, 'info')
+        return
+      }
+      const seen = new Set<string>()
+      const unique = source.filter((s) => {
+        const k = s.tema.trim().toLowerCase()
+        if (seen.has(k)) return false
+        seen.add(k)
+        return true
+      })
+      const mapped = unique.map((s, i) => {
+        const sessions = getSessions(s).map((sess) => ({
+          date: sess.date.replace(String(copyFrom), String(newYear)),
+          status: 'Programada' as const,
+        }))
+        return {
+          codigo: `CAP-${newYear}-${String(i + 1).padStart(3, '0')}`,
+          year: newYear,
+          item: i + 1,
+          tema: s.tema,
+          responsable: s.responsable,
+          sessions,
+          periodoTexto: sessions.length > 1 ? `${sessions.length} sesiones · ${newYear}` : s.periodoTexto.replace(String(copyFrom), String(newYear)),
+          estado: 'Programada' as const,
+          createdAt: now,
+          updatedAt: now,
+        }
+      })
+      await db.capacitaciones.bulkAdd(mapped)
+      await db.folders.bulkAdd(
+        mapped.map((c) => ({
+          year: newYear,
+          tema: c.tema,
+          path: `Cronograma de Capacitaciones - ${newYear}/${c.tema}`,
+          createdAt: now,
+        }))
+      )
       setYear(newYear)
       setYearModal(false)
-      return
+      await refresh()
+      toast(`Programa ${newYear} creado (${mapped.length} temas)`, 'success')
+    } catch {
+      toast('No se pudo crear el programa', 'error')
     }
-    const seen = new Set<string>()
-    const unique = source.filter((s) => {
-      const k = s.tema.trim().toLowerCase()
-      if (seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
-    const mapped = unique.map((s, i) => {
-      const sessions = getSessions(s).map((sess) => ({
-        date: sess.date.replace(String(copyFrom), String(newYear)),
-        status: 'Programada' as const,
-      }))
-      return {
-        codigo: `CAP-${newYear}-${String(i + 1).padStart(3, '0')}`,
-        year: newYear,
-        item: i + 1,
-        tema: s.tema,
-        responsable: s.responsable,
-        sessions,
-        periodoTexto: sessions.length > 1 ? `${sessions.length} sesiones · ${newYear}` : s.periodoTexto.replace(String(copyFrom), String(newYear)),
-        estado: 'Programada' as const,
-        createdAt: now,
-        updatedAt: now,
-      }
-    })
-    await db.capacitaciones.bulkAdd(mapped)
-    await db.folders.bulkAdd(
-      mapped.map((c) => ({
-        year: newYear,
-        tema: c.tema,
-        path: `Cronograma de Capacitaciones - ${newYear}/${c.tema}`,
-        createdAt: now,
-      }))
-    )
-    setYear(newYear)
-    setYearModal(false)
-    await refresh()
   }
 
   function openEdit(row: Capacitacion) {
@@ -164,46 +172,59 @@ export default function Cronograma() {
   }
 
   async function handleSave() {
-    if (!form.tema.trim()) return
-    const fechas = form.fechas
-      .split(/[,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((s) => {
-        if (s.includes('/')) {
-          const [d, m, y] = s.split('/')
-          return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-        }
-        return s
+    if (!form.tema.trim()) {
+      toast('El tema es obligatorio', 'error')
+      return
+    }
+    try {
+      const fechas = form.fechas
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          if (s.includes('/')) {
+            const [d, m, y] = s.split('/')
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+          }
+          return s
+        })
+      const prev = editing ? getSessions(editing) : []
+      const sessions = fechas.map((date) => {
+        const old = prev.find((s) => s.date === date)
+        return { date, status: old?.status || ('Programada' as const) }
       })
-    const prev = editing ? getSessions(editing) : []
-    const sessions = fechas.map((date) => {
-      const old = prev.find((s) => s.date === date)
-      return { date, status: old?.status || ('Programada' as const) }
-    })
-    const nextItem = editing ? editing.item : rows.length ? Math.max(...rows.map((r) => r.item)) + 1 : 1
-    const codigo = editing?.codigo ?? `CAP-${year}-${String(nextItem).padStart(3, '0')}`
-    await saveCapacitacion({
-      id: editing?.id,
-      codigo,
-      year,
-      item: nextItem,
-      tema: form.tema.trim(),
-      responsable: form.responsable.trim() || 'Por asignar',
-      sessions,
-      periodoTexto: sessions.length > 1 ? `${sessions.length} sesiones · ${year}` : formatDateFull(fechas[0] || ''),
-      estado: editing?.estado ?? 'Programada',
-      createdAt: editing?.createdAt,
-    })
-    closeForm()
-    await refresh()
+      const nextItem = editing ? editing.item : rows.length ? Math.max(...rows.map((r) => r.item)) + 1 : 1
+      const codigo = editing?.codigo ?? `CAP-${year}-${String(nextItem).padStart(3, '0')}`
+      await saveCapacitacion({
+        id: editing?.id,
+        codigo,
+        year,
+        item: nextItem,
+        tema: form.tema.trim(),
+        responsable: form.responsable.trim() || 'Por asignar',
+        sessions,
+        periodoTexto: sessions.length > 1 ? `${sessions.length} sesiones · ${year}` : formatDateFull(fechas[0] || ''),
+        estado: editing?.estado ?? 'Programada',
+        createdAt: editing?.createdAt,
+      })
+      closeForm()
+      await refresh()
+      toast(editing ? 'Tema actualizado' : 'Tema agregado al programa', 'success')
+    } catch {
+      toast('Error al guardar', 'error')
+    }
   }
 
   async function handleDelete(id: number) {
     if (!confirmar(mensajes.eliminarTema)) return
-    await deleteCapacitacion(id)
-    setSelected(null)
-    await refresh()
+    try {
+      await deleteCapacitacion(id)
+      setSelected(null)
+      await refresh()
+      toast('Tema eliminado', 'success')
+    } catch {
+      toast('No se pudo eliminar', 'error')
+    }
   }
 
   async function toggleSessionStatus(row: Capacitacion, date: string) {
@@ -212,11 +233,27 @@ export default function Cronograma() {
         ? { ...s, status: (s.status === 'Realizada' ? 'Programada' : 'Realizada') as Session['status'] }
         : s
     )
+    const next = sessions.find((s) => s.date === date)
     await saveCapacitacion({ ...row, sessions, id: row.id })
     await refresh()
     if (selected?.id === row.id) {
       const updated = (await listCapacitaciones(year)).find((c) => c.id === row.id)
       if (updated) setSelected(updated)
+    }
+    toast(
+      next?.status === 'Realizada' ? 'Sesión marcada como realizada' : 'Sesión marcada como programada',
+      'success'
+    )
+  }
+
+  function doExport(kind: 'excel' | 'word' | 'pdf') {
+    try {
+      if (kind === 'excel') exportExcel(filtered, year)
+      else if (kind === 'word') exportWord(filtered, year)
+      else exportPDF(filtered, year)
+      toast(`Exportación ${kind.toUpperCase()} lista`, 'success')
+    } catch {
+      toast('Error al exportar', 'error')
     }
   }
 
@@ -261,13 +298,13 @@ export default function Cronograma() {
               <Plus size={14} /> Agregar tema
             </button>
             <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
-            <button type="button" className="btn btn-ghost" onClick={() => exportExcel(filtered, year)} title="Exportar Excel">
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('excel')} title="Exportar Excel">
               <FileSpreadsheet size={14} /> Excel
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => exportWord(filtered, year)} title="Exportar Word">
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('word')} title="Exportar Word">
               <FileText size={14} /> Word
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => exportPDF(filtered, year)} title="Exportar PDF">
+            <button type="button" className="btn btn-ghost" onClick={() => doExport('pdf')} title="Exportar PDF">
               <FileType size={14} /> PDF
             </button>
           </div>
