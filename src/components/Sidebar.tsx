@@ -6,53 +6,46 @@ import {
   FolderOpen,
   ChevronLeft,
   GraduationCap,
-  Sun,
-  Moon,
 } from 'lucide-react'
 import { useState } from 'react'
-import { useTheme } from '../lib/theme'
 
 const NAV = [
-  { to: '/inicio', label: 'Inicio', icon: Home },
-  { to: '/cronograma', label: 'Cronograma', icon: CalendarDays },
-  { to: '/examenes', label: 'Exámenes', icon: ClipboardList },
-  { to: '/data-storage', label: 'Data Storage', icon: FolderOpen },
+  { to: '/inicio', label: 'Inicio', icon: Home, desc: 'Panel y grafo' },
+  { to: '/cronograma', label: 'Cronograma', icon: CalendarDays, desc: 'Programa anual' },
+  { to: '/examenes', label: 'Exámenes', icon: ClipboardList, desc: 'Forms & evaluaciones' },
+  { to: '/data-storage', label: 'Data Storage', icon: FolderOpen, desc: 'Materiales' },
 ] as const
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const { theme, toggle } = useTheme()
 
   return (
     <aside
       className={`flex flex-col shrink-0 transition-all duration-300 ease-out ${
-        collapsed ? 'w-[72px]' : 'w-[240px]'
+        collapsed ? 'w-[72px]' : 'w-[232px]'
       }`}
       style={{
         background: 'var(--bg-sidebar)',
-        boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
+        boxShadow: '4px 0 32px rgba(0,0,0,0.2)',
       }}
     >
-      <div className="h-16 flex items-center gap-3 px-4 border-b border-white/10">
+      <div className="h-14 flex items-center gap-3 px-3.5 border-b border-white/8">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
           style={{
-            background: 'linear-gradient(135deg, #1a6bb0 0%, #0f4c81 100%)',
-            boxShadow: '0 2px 10px rgba(21, 101, 168, 0.45)',
+            background: 'linear-gradient(145deg, #1a6bb0 0%, #0f4c81 55%, #0a3558 100%)',
+            boxShadow: '0 2px 12px rgba(15, 76, 129, 0.5)',
           }}
         >
-          <GraduationCap size={18} className="text-white" />
+          <GraduationCap size={18} className="text-white" strokeWidth={2} />
         </div>
         {!collapsed && (
           <div className="overflow-hidden min-w-0 flex-1">
             <div className="text-[13px] font-semibold text-white tracking-tight leading-tight truncate">
               Capacitaciones
             </div>
-            <div
-              className="text-[10px] font-semibold tracking-widest uppercase"
-              style={{ color: 'var(--accent)' }}
-            >
-              ROMEX · v2
+            <div className="text-[10px] font-bold tracking-[0.14em] uppercase" style={{ color: 'var(--accent)' }}>
+              ROMEX · Calidad
             </div>
           </div>
         )}
@@ -60,7 +53,7 @@ export default function Sidebar() {
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-          title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          title={collapsed ? 'Expandir' : 'Colapsar'}
         >
           <ChevronLeft
             size={16}
@@ -69,7 +62,12 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 py-4 px-2.5 flex flex-col gap-1">
+      <nav className="flex-1 py-3.5 px-2.5 flex flex-col gap-0.5">
+        {!collapsed && (
+          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Módulos
+          </div>
+        )}
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -77,7 +75,7 @@ export default function Sidebar() {
             title={label}
             className={({ isActive }) =>
               `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
-                isActive ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                isActive ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
               } ${collapsed ? 'justify-center px-0' : ''}`
             }
           >
@@ -88,18 +86,18 @@ export default function Sidebar() {
                     className="absolute inset-0 rounded-xl"
                     style={{
                       background:
-                        'linear-gradient(135deg, rgba(26,107,176,0.55) 0%, rgba(15,76,129,0.4) 100%)',
+                        'linear-gradient(135deg, rgba(26,107,176,0.5) 0%, rgba(15,76,129,0.35) 100%)',
                       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)',
                     }}
                   />
                 )}
                 {isActive && !collapsed && (
                   <span
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
                     style={{ background: 'var(--accent)' }}
                   />
                 )}
-                <Icon size={18} className="relative shrink-0" strokeWidth={isActive ? 2.2 : 1.8} />
+                <Icon size={18} className="relative shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
                 {!collapsed && <span className="relative truncate tracking-wide">{label}</span>}
               </>
             )}
@@ -107,30 +105,16 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className={`px-3 py-3 border-t border-white/10 ${collapsed ? 'flex justify-center' : ''}`}>
-        <button
-          type="button"
-          onClick={toggle}
-          className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors w-full ${
-            collapsed ? 'justify-center px-0' : ''
-          }`}
-          title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-        >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          {!collapsed && (
-            <span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
-          )}
-        </button>
-        {!collapsed && (
-          <div className="px-3 pt-2">
-            <div className="text-[10px] font-semibold tracking-wider uppercase text-slate-500">
-              Local-first · 2026
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5 truncate">Planta cacao · Chincha</div>
+      {!collapsed && (
+        <div className="px-4 py-3.5 border-t border-white/8">
+          <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500">
+            Local-first · 2026
           </div>
-        )}
-      </div>
+          <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+            Planta de cacao · Chincha
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
