@@ -8,6 +8,7 @@ import {
   type Capacitacion, type Session, sessionsFromDates,
 } from '../lib/db'
 import { exportExcel, exportPDF, exportWord } from '../lib/exportCrono'
+import { confirmar, mensajes } from '../lib/confirm'
 
 function getSessions(c: Capacitacion): Session[] {
   if (c.sessions?.length) return c.sessions
@@ -95,7 +96,7 @@ export default function Cronograma() {
   async function createAnnualProgram() {
     const existing = await listCapacitaciones(newYear)
     if (existing.length > 0) {
-      if (!confirm(`Ya existe un programa ${newYear} (${existing.length} temas). ¿Reemplazarlo?`)) return
+      if (!confirmar(mensajes.reemplazarPrograma(newYear, existing.length))) return
       await db.capacitaciones.where('year').equals(newYear).delete()
       await db.folders.where('year').equals(newYear).delete()
     }
@@ -199,7 +200,7 @@ export default function Cronograma() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('¿Eliminar este tema del programa anual?')) return
+    if (!confirmar(mensajes.eliminarTema)) return
     await deleteCapacitacion(id)
     setSelected(null)
     await refresh()
@@ -211,11 +212,7 @@ export default function Cronograma() {
         ? { ...s, status: (s.status === 'Realizada' ? 'Programada' : 'Realizada') as Session['status'] }
         : s
     )
-    await saveCapacitacion({
-      ...row,
-      sessions,
-      id: row.id,
-    })
+    await saveCapacitacion({ ...row, sessions, id: row.id })
     await refresh()
     if (selected?.id === row.id) {
       const updated = (await listCapacitaciones(year)).find((c) => c.id === row.id)
@@ -225,17 +222,22 @@ export default function Cronograma() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-[var(--border)] shrink-0">
+      <div className="page-header shrink-0">
         <div className="px-7 pt-5 pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex gap-4">
-              <div className="w-11 h-11 rounded-xl bg-[var(--primary)] flex items-center justify-center shrink-0 shadow-sm">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'var(--primary)', boxShadow: '0 2px 8px rgba(15,76,129,0.3)' }}
+              >
                 <Building2 size={20} className="text-white" strokeWidth={1.8} />
               </div>
               <div>
-                <div className="text-[11px] font-semibold text-[var(--primary)] tracking-widest uppercase mb-0.5">EXPORTADORA ROMEX S.A.</div>
+                <div className="text-[11px] font-semibold tracking-widest uppercase mb-0.5" style={{ color: 'var(--primary-text)' }}>
+                  EXPORTADORA ROMEX S.A.
+                </div>
                 <h1 className="text-[20px] font-semibold tracking-tight leading-tight">Programa Anual de Formación {year}</h1>
-                <p className="text-[12px] text-[var(--text-secondary)] mt-1">Planta de cacao · Chincha · Código HACCP 004</p>
+                <p className="text-[12px] mt-1" style={{ color: 'var(--text-secondary)' }}>Planta de cacao · Chincha · Código HACCP 004</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -251,21 +253,21 @@ export default function Cronograma() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
               <input className="input w-full pl-9" placeholder="Buscar tema o responsable…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <div className="flex-1" />
             <button type="button" className="btn btn-ghost" onClick={() => { setEditing(null); setForm({ tema: '', responsable: '', fechas: '' }); setFormOpen(true) }}>
               <Plus size={14} /> Agregar tema
             </button>
-            <div className="h-5 w-px bg-[var(--border)]" />
-            <button type="button" className="btn btn-ghost" onClick={() => exportExcel(filtered, year)} title="Excel">
+            <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
+            <button type="button" className="btn btn-ghost" onClick={() => exportExcel(filtered, year)} title="Exportar Excel">
               <FileSpreadsheet size={14} /> Excel
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => exportWord(filtered, year)} title="Word">
+            <button type="button" className="btn btn-ghost" onClick={() => exportWord(filtered, year)} title="Exportar Word">
               <FileText size={14} /> Word
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => exportPDF(filtered, year)} title="PDF">
+            <button type="button" className="btn btn-ghost" onClick={() => exportPDF(filtered, year)} title="Exportar PDF">
               <FileType size={14} /> PDF
             </button>
           </div>
@@ -274,10 +276,10 @@ export default function Cronograma() {
 
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
-          <div className="flex items-center justify-center h-48 text-[var(--text-muted)] text-sm">Cargando programa {year}…</div>
+          <div className="flex items-center justify-center h-48 text-sm" style={{ color: 'var(--text-muted)' }}>Cargando programa {year}…</div>
         ) : rows.length === 0 ? (
           <div className="table-wrap p-16 text-center">
-            <CalendarRange size={24} className="mx-auto text-[var(--text-muted)] mb-3" />
+            <CalendarRange size={24} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-[15px] font-medium mb-1">No hay programa para {year}</p>
             <button type="button" className="btn btn-primary mt-4" onClick={() => { setNewYear(year); setCopyFrom(2026); setYearModal(true) }}>
               Crear programa {year}
@@ -287,14 +289,14 @@ export default function Cronograma() {
           <div className="table-wrap">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-[#f8f9fa] border-b border-[var(--border)] text-left">
+                <tr className="th-row text-left">
                   <th className="px-3 py-3 w-8" />
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[28px]">#</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[100px]">ID</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Tema</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[160px]">Sesiones</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[150px]">Responsable</th>
-                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[100px] text-right">Acciones</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[28px]" style={{ color: 'var(--text-muted)' }}>#</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px]" style={{ color: 'var(--text-muted)' }}>ID</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Tema</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[160px]" style={{ color: 'var(--text-muted)' }}>Sesiones</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[150px]" style={{ color: 'var(--text-muted)' }}>Responsable</th>
+                  <th className="px-3 py-3 font-semibold text-[11px] uppercase tracking-wider w-[100px] text-right" style={{ color: 'var(--text-muted)' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -307,58 +309,61 @@ export default function Cronograma() {
                   const isOpen = expanded[id]
                   return (
                     <Fragment key={row.id ?? row.codigo}>
-                      <tr className="border-b border-[var(--border)] hover:bg-[#f8f9fa] group">
+                      <tr className="border-b tr-hover group" style={{ borderColor: 'var(--border)' }}>
                         <td className="px-2 py-3">
                           {hasMulti ? (
-                            <button type="button" onClick={() => setExpanded((p) => ({ ...p, [id]: !p[id] }))} className="btn-icon text-[var(--text-muted)]">
+                            <button type="button" onClick={() => setExpanded((p) => ({ ...p, [id]: !p[id] }))} className="btn-icon" style={{ color: 'var(--text-muted)' }}>
                               {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                             </button>
                           ) : <span className="w-8 inline-block" />}
                         </td>
-                        <td className="px-3 py-3 text-[var(--text-muted)]">{row.item}</td>
-                        <td className="px-3 py-3 font-mono text-[12px] text-[var(--text-secondary)]">{row.codigo}</td>
+                        <td className="px-3 py-3" style={{ color: 'var(--text-muted)' }}>{row.item}</td>
+                        <td className="px-3 py-3 font-mono text-[12px]" style={{ color: 'var(--text-secondary)' }}>{row.codigo}</td>
                         <td className="px-3 py-3">
                           <div className="font-medium leading-snug">{row.tema}</div>
                           {hasMulti && (
                             <div className="flex items-center gap-1.5 mt-1">
-                              <RefreshCw size={11} className="text-[var(--primary)]" />
-                              <span className="text-[11px] text-[var(--primary-text)] font-medium">Refuerzo · {done}/{n} realizadas</span>
+                              <RefreshCw size={11} style={{ color: 'var(--primary)' }} />
+                              <span className="text-[11px] font-medium" style={{ color: 'var(--primary-text)' }}>Refuerzo · {done}/{n} realizadas</span>
                             </div>
                           )}
                         </td>
                         <td className="px-3 py-3">
                           {hasMulti ? (
-                            <span className="px-2 py-0.5 rounded-full bg-[var(--primary-soft)] text-[var(--primary-text)] text-[11px] font-medium">{n} sesiones</span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{n} sesiones</span>
                           ) : (
-                            <span className="text-[var(--text-secondary)]">{sess[0] ? formatDateShort(sess[0].date) : '—'}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{sess[0] ? formatDateShort(sess[0].date) : '—'}</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 text-[var(--text-secondary)]">{row.responsable}</td>
+                        <td className="px-3 py-3" style={{ color: 'var(--text-secondary)' }}>{row.responsable}</td>
                         <td className="px-3 py-3">
                           <div className="flex justify-end gap-0.5 opacity-50 group-hover:opacity-100">
-                            <button type="button" title="Ver" onClick={() => setSelected(row)} className="btn-icon text-[var(--primary)]"><Eye size={15} /></button>
+                            <button type="button" title="Ver" onClick={() => setSelected(row)} className="btn-icon" style={{ color: 'var(--primary)' }}><Eye size={15} /></button>
                             <button type="button" title="Editar" onClick={() => openEdit(row)} className="btn-icon"><Pencil size={15} /></button>
-                            <button type="button" title="Eliminar" onClick={() => row.id && handleDelete(row.id)} className="btn-icon text-[var(--danger)]"><Trash2 size={15} /></button>
+                            <button type="button" title="Eliminar" onClick={() => row.id && handleDelete(row.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                           </div>
                         </td>
                       </tr>
                       {hasMulti && isOpen && (
-                        <tr className="bg-[#fafbfc]">
-                          <td colSpan={7} className="px-6 py-3 border-b border-[var(--border)]">
-                            <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Sesiones (clic para marcar realizada)</div>
+                        <tr style={{ background: 'var(--surface-2)' }}>
+                          <td colSpan={7} className="px-6 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                            <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Sesiones (clic para marcar realizada)</div>
                             <div className="flex flex-wrap gap-2">
                               {sess.map((s, i) => (
                                 <button
                                   key={s.date + i}
                                   type="button"
                                   onClick={() => toggleSessionStatus(row, s.date)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] transition-colors ${
-                                    s.status === 'Realizada'
-                                      ? 'bg-[var(--success-soft)] border-transparent text-[var(--success)]'
-                                      : 'bg-white border-[var(--border)] text-[var(--text)] hover:border-[var(--primary)]'
-                                  }`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] transition-colors"
+                                  style={{
+                                    background: s.status === 'Realizada' ? 'var(--success-soft)' : 'var(--surface)',
+                                    borderColor: s.status === 'Realizada' ? 'transparent' : 'var(--border)',
+                                    color: s.status === 'Realizada' ? 'var(--success)' : 'var(--text)',
+                                  }}
                                 >
-                                  {s.status === 'Realizada' ? <Check size={12} /> : <span className="w-4 h-4 rounded-full bg-[var(--primary-soft)] text-[10px] flex items-center justify-center text-[var(--primary-text)]">{i + 1}</span>}
+                                  {s.status === 'Realizada' ? <Check size={12} /> : (
+                                    <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{i + 1}</span>
+                                  )}
                                   {formatDateFull(s.date)}
                                 </button>
                               ))}
@@ -374,7 +379,7 @@ export default function Cronograma() {
           </div>
         )}
         {rows.length > 0 && (
-          <div className="mt-3 flex justify-between text-[12px] text-[var(--text-muted)]">
+          <div className="mt-3 flex justify-between text-[12px]" style={{ color: 'var(--text-muted)' }}>
             <span>{filtered.length} temas · {totalSesiones} sesiones · {year}</span>
             <span>Documento controlado · Aseguramiento de Calidad</span>
           </div>
@@ -384,18 +389,18 @@ export default function Cronograma() {
       {yearModal && (
         <div className="modal-backdrop" onClick={() => setYearModal(false)}>
           <div className="modal-panel max-w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-[15px] font-semibold">Nuevo programa anual</h2>
               <button type="button" onClick={() => setYearModal(false)} className="btn-icon"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-4">
-              <p className="text-[13px] text-[var(--text-secondary)]">Copia temas y sesiones de refuerzo a un año nuevo. Se crean carpetas en Data Storage.</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>Copia temas y sesiones de refuerzo a un año nuevo. Se crean carpetas en Data Storage.</p>
               <label className="block">
-                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Año nuevo</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Año nuevo</span>
                 <input type="number" className="input w-full" value={newYear} onChange={(e) => setNewYear(+e.target.value)} min={2020} max={2040} />
               </label>
               <label className="block">
-                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Copiar desde</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Copiar desde</span>
                 <select className="input w-full" value={copyFrom} onChange={(e) => setCopyFrom(+e.target.value)}>
                   {[2023, 2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -412,22 +417,25 @@ export default function Cronograma() {
       {selected && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
           <div className="modal-panel max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-[15px] font-semibold">Detalle</h2>
               <button type="button" onClick={() => setSelected(null)} className="btn-icon"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-3 text-[13px]">
-              <div><span className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider">ID</span><div className="font-mono">{selected.codigo}</div></div>
-              <div><span className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider">Tema</span><div className="font-medium">{selected.tema}</div></div>
-              <div><span className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider">Responsable</span><div>{selected.responsable}</div></div>
+              <div><span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>ID</span><div className="font-mono">{selected.codigo}</div></div>
+              <div><span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Tema</span><div className="font-medium">{selected.tema}</div></div>
+              <div><span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Responsable</span><div>{selected.responsable}</div></div>
               <div>
-                <span className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider">Sesiones</span>
+                <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Sesiones</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {getSessions(selected).map((s, i) => (
                     <button key={s.date + i} type="button" onClick={() => toggleSessionStatus(selected, s.date)}
-                      className={`px-2 py-0.5 rounded-md text-[12px] font-medium ${
-                        s.status === 'Realizada' ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--primary-soft)] text-[var(--primary-text)]'
-                      }`}>{formatDateFull(s.date)}{s.status === 'Realizada' ? ' ✓' : ''}</button>
+                      className="px-2 py-0.5 rounded-md text-[12px] font-medium"
+                      style={{
+                        background: s.status === 'Realizada' ? 'var(--success-soft)' : 'var(--primary-soft)',
+                        color: s.status === 'Realizada' ? 'var(--success)' : 'var(--primary-text)',
+                      }}
+                    >{formatDateFull(s.date)}{s.status === 'Realizada' ? ' ✓' : ''}</button>
                   ))}
                 </div>
               </div>
@@ -443,21 +451,21 @@ export default function Cronograma() {
       {formOpen && (
         <div className="modal-backdrop" onClick={closeForm}>
           <div className="modal-panel max-w-md" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-[15px] font-semibold">{editing ? 'Editar tema' : 'Agregar tema'}</h2>
               <button type="button" onClick={closeForm} className="btn-icon"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-4">
               <label className="block">
-                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tema *</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Tema *</span>
                 <input className="input w-full" value={form.tema} onChange={(e) => setForm({ ...form, tema: e.target.value })} autoFocus />
               </label>
               <label className="block">
-                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Responsable</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Responsable</span>
                 <input className="input w-full" value={form.responsable} onChange={(e) => setForm({ ...form, responsable: e.target.value })} />
               </label>
               <label className="block">
-                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Fechas de refuerzo (coma)</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Fechas de refuerzo (coma)</span>
                 <input className="input w-full" value={form.fechas} onChange={(e) => setForm({ ...form, fechas: e.target.value })} placeholder="2026-01-21, 2026-02-03" />
               </label>
               <div className="flex gap-2">
