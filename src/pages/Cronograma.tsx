@@ -21,13 +21,14 @@ import {
 } from '../lib/db'
 
 function formatDates(fechas: string[]) {
-  if (!fechas.length) return '—'
+  if (!fechas.length) return '\u2014'
   return fechas
     .map((d) => {
-      const [y, m, day] = d.split('-')
-      return `${day}/${m}/${y}`
+      const parts = d.split('-')
+      if (parts.length !== 3) return d
+      return `${parts[2]}/${parts[1]}/${parts[0]}`
     })
-    .join(' · ')
+    .join(' \u00b7 ')
 }
 
 export default function Cronograma() {
@@ -36,8 +37,14 @@ export default function Cronograma() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Capacitacion | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Capacitacion | null>(null)
-  const [form, setForm] = useState({ tema: '', responsable: '', periodoTexto: '', fechas: '' })
+  const [form, setForm] = useState({
+    tema: '',
+    responsable: '',
+    periodoTexto: '',
+    fechas: '',
+  })
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -63,6 +70,7 @@ export default function Cronograma() {
     setEditing(null)
     setForm({ tema: '', responsable: '', periodoTexto: '', fechas: '' })
     setSelected(null)
+    setFormOpen(true)
   }
 
   function openEdit(row: Capacitacion) {
@@ -74,16 +82,23 @@ export default function Cronograma() {
       fechas: row.fechas.join(', '),
     })
     setSelected(null)
+    setFormOpen(true)
+  }
+
+  function closeForm() {
+    setFormOpen(false)
+    setEditing(null)
+    setForm({ tema: '', responsable: '', periodoTexto: '', fechas: '' })
   }
 
   async function handleSave() {
     if (!form.tema.trim()) return
+
     const fechas = form.fechas
       .split(/[,;]+/)
       .map((s) => s.trim())
       .filter(Boolean)
       .map((s) => {
-        // accept DD/MM/YYYY or YYYY-MM-DD
         if (s.includes('/')) {
           const [d, m, y] = s.split('/')
           return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
@@ -91,8 +106,14 @@ export default function Cronograma() {
         return s
       })
 
-    const nextItem = editing ? editing.item : (rows.length ? Math.max(...rows.map((r) => r.item)) + 1 : 1)
-    const codigo = editing?.codigo ?? `CAP-${year}-${String(nextItem).padStart(3, '0')}`
+    const nextItem = editing
+      ? editing.item
+      : rows.length
+        ? Math.max(...rows.map((r) => r.item)) + 1
+        : 1
+
+    const codigo =
+      editing?.codigo ?? `CAP-${year}-${String(nextItem).padStart(3, '0')}`
 
     await saveCapacitacion({
       id: editing?.id,
@@ -105,8 +126,8 @@ export default function Cronograma() {
       periodoTexto: form.periodoTexto.trim() || formatDates(fechas),
       estado: editing?.estado ?? 'Programada',
     })
-    setEditing(null)
-    setForm({ tema: '', responsable: '', periodoTexto: '', fechas: '' })
+
+    closeForm()
     await refresh()
   }
 
@@ -125,16 +146,24 @@ export default function Cronograma() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <CalendarDays size={18} className="text-[var(--primary)]" />
-              <h1 className="text-[22px] font-semibold text-[var(--text)] tracking-tight">Cronograma</h1>
+              <h1 className="text-[22px] font-semibold text-[var(--text)] tracking-tight">
+                Cronograma
+              </h1>
             </div>
             <p className="text-[13px] text-[var(--text-secondary)]">
-              EXPORTADORA ROMEX S.A. · Programa Anual de Formaci\u00f3n · C\u00f3digo HACCP 004
+              EXPORTADORA ROMEX S.A. \u00b7 Programa Anual de Formaci\u00f3n \u00b7 C\u00f3digo HACCP 004
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select value={year} onChange={(e) => setYear(+e.target.value)} className="input w-[100px]">
+            <select
+              value={year}
+              onChange={(e) => setYear(+e.target.value)}
+              className="input w-[100px]"
+            >
               {[2023, 2024, 2025, 2026, 2027].map((y) => (
-                <option key={y} value={y}>{y}</option>
+                <option key={y} value={y}>
+                  {y}
+                </option>
               ))}
             </select>
             <button type="button" className="btn btn-primary" onClick={openNew}>
@@ -154,12 +183,14 @@ export default function Cronograma() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="mt-4 relative max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+          />
           <input
             className="input w-full pl-9"
-            placeholder="Buscar por tema, responsable o c\u00f3digo…"
+            placeholder="Buscar por tema, responsable o c\u00f3digo\u2026"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -169,17 +200,29 @@ export default function Cronograma() {
       {/* Table */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-[var(--text-muted)] text-sm">Cargando…</div>
+          <div className="flex items-center justify-center h-40 text-[var(--text-muted)] text-sm">
+            Cargando\u2026
+          </div>
         ) : (
           <div className="table-wrap animate-in">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-[#f9fafb] border-b border-[var(--border)] text-left">
-                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[110px]">ID</th>
-                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Tema</th>
-                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[180px]">Fecha o periodo</th>
-                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[170px]">Responsable</th>
-                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[140px] text-right">Acciones</th>
+                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[110px]">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+                    Tema
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[180px]">
+                    Fecha o periodo
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[170px]">
+                    Responsable
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] w-[140px] text-right">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -188,10 +231,18 @@ export default function Cronograma() {
                     key={row.id}
                     className="border-b border-[var(--border)] last:border-0 hover:bg-[#f9fafb] transition-colors duration-150 group"
                   >
-                    <td className="px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)]">{row.codigo}</td>
-                    <td className="px-4 py-3 font-medium text-[var(--text)] leading-snug">{row.tema}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{row.periodoTexto}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{row.responsable}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)]">
+                      {row.codigo}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-[var(--text)] leading-snug">
+                      {row.tema}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                      {row.periodoTexto}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                      {row.responsable}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                         <button
@@ -212,7 +263,7 @@ export default function Cronograma() {
                         </button>
                         <button
                           type="button"
-                          title="Guardar"
+                          title="Guardar / Editar"
                           onClick={() => openEdit(row)}
                           className="btn-icon text-[var(--success)] hover:bg-[var(--success-soft)]"
                         >
@@ -240,65 +291,106 @@ export default function Cronograma() {
           </div>
         )}
         <div className="mt-3 text-[12px] text-[var(--text-muted)]">
-          {filtered.length} capacitaci{filtered.length === 1 ? '\u00f3n' : 'ones'} · A\u00f1o {year}
+          {filtered.length} capacitaci{filtered.length === 1 ? '\u00f3n' : 'ones'} \u00b7
+          A\u00f1o {year}
         </div>
       </div>
 
       {/* Modal Visualizar */}
       {selected && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
-          <div className="modal-panel max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-panel max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-              <h2 className="text-[15px] font-semibold text-[var(--text)]">Detalle de capacitaci\u00f3n</h2>
-              <button type="button" onClick={() => setSelected(null)} className="btn-icon text-[var(--text-secondary)]">
+              <h2 className="text-[15px] font-semibold text-[var(--text)]">
+                Detalle de capacitaci\u00f3n
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="btn-icon text-[var(--text-secondary)]"
+              >
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-[13px]">
                 <div>
-                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">ID</div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    ID
+                  </div>
                   <div className="font-mono text-[var(--text)]">{selected.codigo}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Estado</div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Estado
+                  </div>
                   <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--primary-soft)] text-[var(--primary-text)]">
                     {selected.estado}
                   </span>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Tema</div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Tema
+                  </div>
                   <div className="font-medium text-[var(--text)]">{selected.tema}</div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Fecha o periodo</div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Fecha o periodo
+                  </div>
                   <div className="text-[var(--text)]">{selected.periodoTexto}</div>
-                  <div className="text-[12px] text-[var(--text-muted)] mt-1">{formatDates(selected.fechas)}</div>
+                  <div className="text-[12px] text-[var(--text-muted)] mt-1">
+                    {formatDates(selected.fechas)}
+                  </div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Responsable</div>
+                  <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                    Responsable
+                  </div>
                   <div className="text-[var(--text)]">{selected.responsable}</div>
                 </div>
               </div>
               <div className="pt-3 border-t border-[var(--border)]">
-                <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Accesos directos</div>
+                <div className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                  Accesos directos
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors">
+                  <button
+                    type="button"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors"
+                  >
                     Examen
                   </button>
-                  <button type="button" className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors">
+                  <button
+                    type="button"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors"
+                  >
                     PPTX / Materiales
                   </button>
-                  <button type="button" className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors">
+                  <button
+                    type="button"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#f3f4f6] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary-text)] transition-colors"
+                  >
                     Data Storage
                   </button>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="button" className="btn btn-ghost flex-1" onClick={() => openEdit(selected)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost flex-1"
+                  onClick={() => openEdit(selected)}
+                >
                   <Pencil size={14} /> Editar
                 </button>
-                <button type="button" className="btn btn-primary flex-1" onClick={() => setSelected(null)}>
+                <button
+                  type="button"
+                  className="btn btn-primary flex-1"
+                  onClick={() => setSelected(null)}
+                >
                   Cerrar
                 </button>
               </div>
@@ -308,50 +400,86 @@ export default function Cronograma() {
       )}
 
       {/* Modal Crear / Editar */}
-      {(editing !== null || (editing === null && form.tema === '' && document.activeElement?.tagName === 'BUTTON')) && false}
-      {(editing !== undefined && (editing !== null || form.tema !== undefined)) && (
-        // Always show form panel when openNew or openEdit was called
-        null
+      {formOpen && (
+        <div className="modal-backdrop" onClick={closeForm}>
+          <div
+            className="modal-panel max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <h2 className="text-[15px] font-semibold text-[var(--text)]">
+                {editing ? 'Editar capacitaci\u00f3n' : 'Nueva capacitaci\u00f3n'}
+              </h2>
+              <button
+                type="button"
+                onClick={closeForm}
+                className="btn-icon text-[var(--text-secondary)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <label className="block">
+                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
+                  Tema *
+                </span>
+                <input
+                  className="input w-full"
+                  value={form.tema}
+                  onChange={(e) => setForm({ ...form, tema: e.target.value })}
+                  placeholder="Nombre del tema"
+                  autoFocus
+                />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
+                  Responsable
+                </span>
+                <input
+                  className="input w-full"
+                  value={form.responsable}
+                  onChange={(e) =>
+                    setForm({ ...form, responsable: e.target.value })
+                  }
+                  placeholder="Ej. Blga. Nereyda Huachua"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
+                  Periodo (texto visible)
+                </span>
+                <input
+                  className="input w-full"
+                  value={form.periodoTexto}
+                  onChange={(e) =>
+                    setForm({ ...form, periodoTexto: e.target.value })
+                  }
+                  placeholder="Ej. Ene / Abr / Jun 2026"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
+                  Fechas (separadas por coma)
+                </span>
+                <input
+                  className="input w-full"
+                  value={form.fechas}
+                  onChange={(e) => setForm({ ...form, fechas: e.target.value })}
+                  placeholder="2026-01-21, 2026-02-03 o 21/01/2026"
+                />
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button type="button" className="btn btn-ghost flex-1" onClick={closeForm}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-primary flex-1" onClick={handleSave}>
+                  <Save size={14} /> Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-
-      {/* Form drawer */}
-      {(editing !== null || (form.tema === '' && editing === null && false)) ? null : null}
-
-      {/* Simple form modal controlled by editing or a "creating" flag */}
-      <FormModal
-        open={editing !== null || (typeof (window as unknown as { __creating?: boolean }).__creating !== 'undefined')}
-        editing={editing}
-        form={form}
-        setForm={setForm}
-        onClose={() => {
-          setEditing(null)
-          setForm({ tema: '', responsable: '', periodoTexto: '', fechas: '' })
-        }}
-        onSave={handleSave}
-        year={year}
-      />
     </div>
   )
-}
-
-function FormModal({
-  open,
-  editing,
-  form,
-  setForm,
-  onClose,
-  onSave,
-  year,
-}: {
-  open: boolean
-  editing: Capacitacion | null
-  form: { tema: string; responsable: string; periodoTexto: string; fechas: string }
-  setForm: (f: typeof form) => void
-  onClose: () => void
-  onSave: () => void
-  year: number
-}) {
-  // We need a creating flag - simplify: show when editing is not null OR when user clicked new
-  // For reliability, parent will pass open based on a local state
-  return null // replaced below
 }
