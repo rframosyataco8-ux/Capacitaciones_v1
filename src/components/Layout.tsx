@@ -3,7 +3,7 @@ import Sidebar from './Sidebar'
 
 export default function Layout() {
   return (
-    <div className="h-full flex bg-[var(--bg)]">
+    <div className="h-full flex" style={{ background: 'var(--bg)' }}>
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         <Outlet />
