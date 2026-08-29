@@ -66,7 +66,7 @@ export interface ExamQuestion {
   texto: string
   puntos: number
   opciones?: string[]
-  correcta?: any // string | number | (string | number)[] | boolean
+  correcta?: any
   explicacion?: string
   obligatoria?: boolean
   minEscala?: number
@@ -77,7 +77,7 @@ export interface ExamQuestion {
 
 export interface ExamSettings {
   tiempoLimiteMinutos?: number
-  notaMinimaAprobatoria?: number // ej. 14 de 20
+  notaMinimaAprobatoria?: number
   mezclarPreguntas?: boolean
   mostrarRespuestasAlTerminar?: boolean
   permitirReintentos?: boolean
@@ -85,7 +85,7 @@ export interface ExamSettings {
   mensajeDesaprobado?: string
   fechaInicio?: string
   fechaFin?: string
-  themeId?: string // id del tema visual
+  themeId?: string
   bannerUrl?: string
 }
 
@@ -153,6 +153,7 @@ function periodoFromSessions(sessions: Session[], year: number): string {
   return `${sessions.length} sesiones · ${year}`
 }
 
+/** Temas reales del Excel ROMEX (programa 2026) */
 const SEED_RAW: { tema: string; responsable: string; fechas: string[] }[] = [
   { tema: 'Proceso de transformación de grano de cacao (producción)', responsable: 'Tco. Fiorella Moscayza', fechas: ['2026-04-01', '2026-06-03', '2026-09-01'] },
   { tema: 'Sistema HACCP', responsable: 'Blga. Nereyda Huachua', fechas: ['2026-01-21', '2026-02-03', '2026-03-03', '2026-04-21', '2026-06-03', '2026-07-21', '2026-09-08', '2026-12-08'] },
@@ -212,22 +213,16 @@ export const SEED_EXAMS: Omit<Exam, 'id'>[] = [
           'Establecer un sistema de vigilancia',
         ],
         correcta: 1,
-        explicacion: 'El Principio 1 es realizar un análisis de peligros para identificar agentes biológicos, químicos o físicos.',
+        explicacion: 'El Principio 1 es realizar un análisis de peligros.',
         obligatoria: true,
       },
       {
         id: 'q-haccp-2',
         tipo: 'casillas',
-        texto: 'Seleccione cuáles de los siguientes son peligros físicos en el procesamiento de cacao:',
+        texto: 'Seleccione peligros físicos en el procesamiento de cacao:',
         puntos: 4,
-        opciones: [
-          'Fragmentos de metal o alambres',
-          'Salmonella spp.',
-          'Piedras o vidrios',
-          'Micotoxinas / Ocratoxina A',
-        ],
+        opciones: ['Fragmentos de metal o alambres', 'Salmonella spp.', 'Piedras o vidrios', 'Micotoxinas / Ocratoxina A'],
         correcta: [0, 2],
-        explicacion: 'Metales, piedras y vidrios son peligros físicos. Salmonella es biológico y Ocratoxina A es químico.',
         obligatoria: true,
       },
       {
@@ -237,35 +232,32 @@ export const SEED_EXAMS: Omit<Exam, 'id'>[] = [
         puntos: 4,
         opciones: ['Verdadero', 'Falso'],
         correcta: 0,
-        explicacion: 'Correcto. El límite crítico es el criterio que diferencia la aceptabilidad de la inaceptabilidad del proceso.',
         obligatoria: true,
       },
       {
         id: 'q-haccp-4',
         tipo: 'multiple',
-        texto: '¿Qué acción se debe tomar inmediatamente cuando se detecta una desviación en un límite crítico?',
+        texto: '¿Qué acción tomar ante desviación de un límite crítico?',
         puntos: 4,
         opciones: [
-          'Continuar la producción y avisar al final del turno',
-          'Aplicar la acción correctiva establecida y retener el producto afectado',
+          'Continuar y avisar al final del turno',
+          'Aplicar acción correctiva y retener el producto afectado',
           'Borrar el registro del monitor',
           'Disminuir la velocidad de la máquina',
         ],
         correcta: 1,
-        explicacion: 'Ante una desviación se debe aplicar la acción correctiva documentada y segregar el lote afectado.',
         obligatoria: true,
       },
       {
         id: 'q-haccp-5',
         tipo: 'escala',
-        texto: '¿Qué tan seguro te sientes aplicando las medidas preventivas en tu puesto de trabajo?',
+        texto: '¿Qué tan seguro te sientes aplicando las medidas preventivas?',
         puntos: 4,
         minEscala: 1,
         maxEscala: 5,
         etiquetaMin: 'Poco seguro',
         etiquetaMax: 'Totalmente seguro',
         correcta: null,
-        explicacion: 'Pregunta de autopercepción de competencia operativa.',
         obligatoria: false,
       },
     ],
@@ -274,42 +266,39 @@ export const SEED_EXAMS: Omit<Exam, 'id'>[] = [
   },
   {
     titulo: 'Buenas Prácticas de Manufactura (BPM) e Higiene',
-    descripcion: 'Control de higiene personal, vestimenta, lavado de manos y prevención de contaminación cruzada.',
+    descripcion: 'Control de higiene personal, vestimenta y prevención de contaminación cruzada.',
     tema: 'Buenas prácticas de Manufactura',
     estado: 'Activo',
     config: {
       tiempoLimiteMinutos: 10,
       notaMinimaAprobatoria: 14,
-      mezclarPreguntas: false,
       mostrarRespuestasAlTerminar: true,
-      mensajeAprobado: '¡Felicitaciones! Cumples con los estándares BPM de planta.',
-      mensajeDesaprobado: 'Por favor, refuerza los procedimientos de vestimenta e higiene.',
+      mensajeAprobado: '¡Felicitaciones! Cumples con los estándares BPM.',
+      mensajeDesaprobado: 'Refuerza los procedimientos de vestimenta e higiene.',
     },
     preguntas: [
       {
         id: 'q-bpm-1',
         tipo: 'multiple',
-        texto: '¿Cuál es el tiempo mínimo recomendado para el frotado de manos con jabón desinfectante?',
+        texto: 'Tiempo mínimo de frotado de manos con jabón:',
         puntos: 5,
         opciones: ['5 segundos', '20 segundos', '1 minuto', '3 minutos'],
         correcta: 1,
-        explicacion: 'El lavado riguroso de manos requiere al menos 20 segundos de fricción en palmas, dorso y entre dedos.',
         obligatoria: true,
       },
       {
         id: 'q-bpm-2',
         tipo: 'verdadero_falso',
-        texto: 'Está permitido el ingreso a sala de procesos portando reloj, aretes o anillos lisos si están limpios.',
+        texto: 'Se permite ingresar a sala de procesos con reloj o anillos si están limpios.',
         puntos: 5,
         opciones: ['Verdadero', 'Falso'],
         correcta: 1,
-        explicacion: 'Falso. Ninguna joya ni objeto personal está permitido en zonas de manipulación para evitar contaminación física.',
         obligatoria: true,
       },
       {
         id: 'q-bpm-3',
         tipo: 'casillas',
-        texto: '¿En qué momentos es obligatorio lavarse y desinfectarse las manos?',
+        texto: 'Momentos obligatorios de lavado de manos:',
         puntos: 5,
         opciones: [
           'Antes de iniciar labores',
@@ -318,22 +307,20 @@ export const SEED_EXAMS: Omit<Exam, 'id'>[] = [
           'Al cambiar de actividad o manipular residuos',
         ],
         correcta: [0, 1, 2, 3],
-        explicacion: 'Todas las situaciones señaladas exigen lavado inmediato de manos.',
         obligatoria: true,
       },
       {
         id: 'q-bpm-4',
         tipo: 'multiple',
-        texto: 'Si un operario presenta síntomas de infección respiratoria o gastrointestinal, ¿qué debe hacer?',
+        texto: 'Si un operario presenta síntomas respiratorios o gastrointestinales:',
         puntos: 5,
         opciones: [
-          'Tomar una pastilla y continuar trabajando en silencio',
-          'Reportar inmediatamente a su supervisor y al área médica',
-          'Cambiar de uniforme por uno más abrigado',
-          'Trabajar únicamente en almacén',
+          'Continuar trabajando en silencio',
+          'Reportar a supervisor y área médica',
+          'Cambiar de uniforme',
+          'Trabajar solo en almacén',
         ],
         correcta: 1,
-        explicacion: 'Debe notificarse de inmediato para evitar riesgo de contaminación de los alimentos.',
         obligatoria: true,
       },
     ],
@@ -341,6 +328,63 @@ export const SEED_EXAMS: Omit<Exam, 'id'>[] = [
     updatedAt: new Date().toISOString(),
   },
 ]
+
+const JUNK_FOLDER_NAMES = new Set(
+  [
+    'Sap Modulos',
+    'Reuniones',
+    'Microsoft Teams Chat Files',
+    'Imágenes',
+    'HACCP 2025',
+    'GRANO 2024',
+    'FISICO QUIMICO 2024',
+    'FAY N 1- PROCEDIMIENTOS DE ANALISIS FISICO Q...',
+    'Escritorio_1',
+    'Escritorio',
+    'Documentos_1',
+    'Documentos',
+    'DC',
+    'Documentos generales',
+  ].map((s) => s.toLowerCase())
+)
+
+/** Crea 1 carpeta por tema del programa y elimina basura (GRANO 2024, Sap, etc.) */
+export async function syncFoldersFromCronograma(year: number) {
+  const now = new Date().toISOString()
+  const caps = await db.capacitaciones.where('year').equals(year).toArray()
+  const validTemas = new Set(caps.map((c) => c.tema.trim().toLowerCase()))
+  const folders = await db.folders.where('year').equals(year).toArray()
+
+  for (const c of caps) {
+    const path = `Cronograma de Capacitaciones - ${year}/${c.tema}`
+    const exists = folders.some(
+      (f) => f.path === path || f.tema.trim().toLowerCase() === c.tema.trim().toLowerCase()
+    )
+    if (!exists) {
+      await db.folders.add({
+        year,
+        tema: c.tema,
+        path,
+        isFavorite: false,
+        isDeleted: false,
+        color: '#0f4c81',
+        createdAt: now,
+      })
+    }
+  }
+
+  const refreshed = await db.folders.where('year').equals(year).toArray()
+  for (const f of refreshed) {
+    const key = f.tema.trim().toLowerCase()
+    if (JUNK_FOLDER_NAMES.has(key) || !validTemas.has(key)) {
+      const filesIn = await db.files.where('folderPath').equals(f.path).count()
+      if (f.id) {
+        if (filesIn === 0) await db.folders.delete(f.id)
+        else await db.folders.update(f.id, { isDeleted: true, deletedAt: now })
+      }
+    }
+  }
+}
 
 export async function seedIfEmpty() {
   try {
@@ -366,18 +410,9 @@ export async function seedIfEmpty() {
           }
         })
       )
-
-      await db.folders.bulkAdd(
-        SEED_RAW.map((c) => ({
-          year,
-          tema: c.tema,
-          path: `Cronograma de Capacitaciones - ${year}/${c.tema}`,
-          isFavorite: false,
-          isDeleted: false,
-          createdAt: now,
-        }))
-      )
     }
+
+    await syncFoldersFromCronograma(year)
 
     const examCount = await db.exams.count()
     if (examCount === 0) {
@@ -415,6 +450,7 @@ export async function ensureFolder(year: number, tema: string) {
     path,
     isFavorite: false,
     isDeleted: false,
+    color: '#0f4c81',
     createdAt: new Date().toISOString(),
   })
 }
@@ -423,10 +459,7 @@ export async function saveCapacitacion(
   data: Omit<Capacitacion, 'createdAt' | 'updatedAt'> & { id?: number; createdAt?: string }
 ) {
   const now = new Date().toISOString()
-  const sessions = data.sessions?.length
-    ? data.sessions
-    : sessionsFromDates(data.fechas || [])
-
+  const sessions = data.sessions?.length ? data.sessions : sessionsFromDates(data.fechas || [])
   const { id, ...rest } = data
   const payload: Capacitacion = {
     ...rest,
@@ -435,7 +468,6 @@ export async function saveCapacitacion(
     updatedAt: now,
     createdAt: data.createdAt || now,
   }
-
   let resultId: number
   if (id != null) {
     await db.capacitaciones.put({ ...payload, id })
@@ -443,7 +475,6 @@ export async function saveCapacitacion(
   } else {
     resultId = await db.capacitaciones.add(payload)
   }
-
   await ensureFolder(data.year, data.tema.trim())
   return resultId
 }
@@ -452,18 +483,11 @@ export async function deleteCapacitacion(id: number) {
   await db.capacitaciones.delete(id)
 }
 
-/* ================= MATERIAL FOLDERS ================= */
-
 export async function listFolders(year?: number, includeDeleted = false) {
   let list: MaterialFolder[]
-  if (year != null) {
-    list = await db.folders.where('year').equals(year).toArray()
-  } else {
-    list = await db.folders.toArray()
-  }
-  if (!includeDeleted) {
-    return list.filter((f) => !f.isDeleted)
-  }
+  if (year != null) list = await db.folders.where('year').equals(year).toArray()
+  else list = await db.folders.toArray()
+  if (!includeDeleted) return list.filter((f) => !f.isDeleted)
   return list
 }
 
@@ -490,8 +514,7 @@ export async function toggleFavoriteFolder(id: number, current: boolean) {
 }
 
 export async function softDeleteFolder(id: number) {
-  const now = new Date().toISOString()
-  await db.folders.update(id, { isDeleted: true, deletedAt: now })
+  await db.folders.update(id, { isDeleted: true, deletedAt: new Date().toISOString() })
 }
 
 export async function restoreFolder(id: number) {
@@ -502,32 +525,23 @@ export async function hardDeleteFolder(id: number) {
   await db.folders.delete(id)
 }
 
-/* ================= MATERIAL FILES ================= */
-
 export async function listFiles(folderPath?: string, includeDeleted = false) {
   let list: MaterialFile[]
-  if (folderPath) {
-    list = await db.files.where('folderPath').equals(folderPath).toArray()
-  } else {
-    list = await db.files.toArray()
-  }
-  if (!includeDeleted) {
-    return list.filter((f) => !f.isDeleted)
-  }
+  if (folderPath) list = await db.files.where('folderPath').equals(folderPath).toArray()
+  else list = await db.files.toArray()
+  if (!includeDeleted) return list.filter((f) => !f.isDeleted)
   return list
 }
 
 export async function listDeletedFiles() {
-  const all = await db.files.toArray()
-  return all.filter((f) => f.isDeleted)
+  return (await db.files.toArray()).filter((f) => f.isDeleted)
 }
 
 export async function listFavoriteFiles() {
-  const all = await db.files.toArray()
-  return all.filter((f) => f.isFavorite && !f.isDeleted)
+  return (await db.files.toArray()).filter((f) => f.isFavorite && !f.isDeleted)
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024
 
 export async function saveFile(meta: {
   folderPath: string
@@ -538,9 +552,7 @@ export async function saveFile(meta: {
   blob: Blob
   tags?: string[]
 }) {
-  if (meta.size > MAX_FILE_SIZE) {
-    throw new Error('Archivo demasiado grande (máx. 50 MB)')
-  }
+  if (meta.size > MAX_FILE_SIZE) throw new Error('Archivo demasiado grande (máx. 50 MB)')
   const safeName = meta.name.replace(/[<>:"/\\|?*]/g, '_').slice(0, 200)
   return db.files.add({
     folderPath: meta.folderPath,
@@ -557,15 +569,11 @@ export async function saveFile(meta: {
 }
 
 export async function renameFile(id: number, newName: string) {
-  const safeName = newName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 200)
-  await db.files.update(id, { name: safeName })
+  await db.files.update(id, { name: newName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 200) })
 }
 
 export async function moveFile(id: number, targetFolderPath: string, targetFolderId?: number) {
-  await db.files.update(id, {
-    folderPath: targetFolderPath,
-    folderId: targetFolderId || null,
-  })
+  await db.files.update(id, { folderPath: targetFolderPath, folderId: targetFolderId || null })
 }
 
 export async function toggleFavoriteFile(id: number, current: boolean) {
@@ -573,8 +581,7 @@ export async function toggleFavoriteFile(id: number, current: boolean) {
 }
 
 export async function softDeleteFile(id: number) {
-  const now = new Date().toISOString()
-  await db.files.update(id, { isDeleted: true, deletedAt: now })
+  await db.files.update(id, { isDeleted: true, deletedAt: new Date().toISOString() })
 }
 
 export async function restoreFile(id: number) {
@@ -588,17 +595,13 @@ export async function hardDeleteFile(id: number) {
 export const deleteFile = hardDeleteFile
 
 export async function emptyTrash() {
-  const deletedFiles = await db.files.filter((f) => !!f.isDeleted).toArray()
-  for (const f of deletedFiles) {
+  for (const f of await db.files.filter((x) => !!x.isDeleted).toArray()) {
     if (f.id) await db.files.delete(f.id)
   }
-  const deletedFolders = await db.folders.filter((fo) => !!fo.isDeleted).toArray()
-  for (const fo of deletedFolders) {
+  for (const fo of await db.folders.filter((x) => !!x.isDeleted).toArray()) {
     if (fo.id) await db.folders.delete(fo.id)
   }
 }
-
-/* ================= EXAMS & SUBMISSIONS ================= */
 
 export async function listExams() {
   try {
@@ -621,26 +624,16 @@ export async function saveExam(
     await db.exams.update(id, { ...rest, updatedAt: now })
     return id
   }
-  return db.exams.add({
-    ...rest,
-    preguntas: data.preguntas || [],
-    createdAt: now,
-    updatedAt: now,
-  })
+  return db.exams.add({ ...rest, preguntas: data.preguntas || [], createdAt: now, updatedAt: now })
 }
 
 export async function deleteExam(id: number) {
   await db.exams.delete(id)
-  // eliminar envíos asociados
   await db.submissions.where('examId').equals(id).delete()
 }
 
 export async function saveExamSubmission(submission: Omit<ExamSubmission, 'id' | 'fecha'>) {
-  const now = new Date().toISOString()
-  return db.submissions.add({
-    ...submission,
-    fecha: now,
-  })
+  return db.submissions.add({ ...submission, fecha: new Date().toISOString() })
 }
 
 export async function listSubmissionsByExam(examId: number) {
@@ -655,8 +648,6 @@ export async function deleteSubmission(id: number) {
   return db.submissions.delete(id)
 }
 
-/* ================= GLOBAL STATS ================= */
-
 export async function getStats(year: number) {
   const caps = await listCapacitaciones(year)
   const exams = await listExams()
@@ -667,7 +658,6 @@ export async function getStats(year: number) {
   let proximas = 0
   const now = new Date()
   const seen = new Set<string>()
-
   for (const c of caps) {
     for (const s of c.sessions || []) {
       sessions++
@@ -683,7 +673,6 @@ export async function getStats(year: number) {
       }
     }
   }
-
   return {
     temas: caps.length,
     sessions,
@@ -696,4 +685,4 @@ export async function getStats(year: number) {
   }
 }
 
-export { periodoFromSessions, sessionsFromDates }
+export { periodoFromSessions, sessionsFromDates, SEED_RAW }
