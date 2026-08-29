@@ -4,12 +4,12 @@ import {
   FolderOpen, ChevronRight, ChevronDown, Upload, File, Trash2, Download,
   Star, Search, List, LayoutGrid, Plus, HardDrive, FolderPlus, Eye,
   Edit3, X, Info, FileText, Image as ImageIcon, Film, Music,
-  FileSpreadsheet, Presentation, Users, BookOpen, Calendar, RefreshCw,
+  FileSpreadsheet, Presentation, RefreshCw, Building2,
 } from 'lucide-react'
 import {
   seedIfEmpty, listFolders, listFiles, saveFile, saveFolder,
   toggleFavoriteFile, softDeleteFile, restoreFile, hardDeleteFile, emptyTrash,
-  renameFile, listDeletedFiles, listFavoriteFiles,
+  renameFile, listDeletedFiles, listFavoriteFiles, syncFoldersFromCronograma,
   type MaterialFolder, type MaterialFile,
 } from '../lib/db'
 import { useToast } from '../lib/toast'
@@ -24,11 +24,7 @@ function formatSize(n: number) {
 
 function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString('es-PE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
+    return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
   } catch {
     return iso
   }
@@ -59,8 +55,8 @@ function fileIcon(name: string, type: string) {
 function FolderIcon() {
   return (
     <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none">
-      <path d="M2.5 5.5C2.5 4.4 3.4 3.5 4.5 3.5H9.1C9.6 3.5 10.1 3.7 10.5 4.1L12.4 6H19.5C20.6 6 21.5 6.9 21.5 8V18.5C21.5 19.6 20.6 20.5 19.5 20.5H4.5C3.4 20.5 2.5 19.6 2.5 18.5V5.5Z" fill="#ffb900" />
-      <path d="M2.5 9H21.5V18.5C21.5 19.6 20.6 20.5 19.5 20.5H4.5C3.4 20.5 2.5 19.6 2.5 18.5V9Z" fill="#ffd335" />
+      <path d="M2.5 5.5C2.5 4.4 3.4 3.5 4.5 3.5H9.1C9.6 3.5 10.1 3.7 10.5 4.1L12.4 6H19.5C20.6 6 21.5 6.9 21.5 8V18.5C21.5 19.6 20.6 20.5 19.5 20.5H4.5C3.4 20.5 2.5 19.6 2.5 18.5V5.5Z" fill="#c4a35a" />
+      <path d="M2.5 9H21.5V18.5C21.5 19.6 20.6 20.5 19.5 20.5H4.5C3.4 20.5 2.5 19.6 2.5 18.5V9Z" fill="#d4b56a" />
     </svg>
   )
 }
@@ -108,15 +104,14 @@ export default function DataStorage() {
     setLoading(true)
     try {
       await seedIfEmpty()
+      await syncFoldersFromCronograma(year)
       const allFolders = await listFolders(year, false)
-      setFolders(allFolders.sort((a, b) => a.tema.localeCompare(b.tema)))
+      setFolders(allFolders.sort((a, b) => a.tema.localeCompare(b.tema, 'es')))
 
       let list: MaterialFile[] = []
-      if (section === 'favorites') {
-        list = await listFavoriteFiles()
-      } else if (section === 'trash') {
-        list = await listDeletedFiles()
-      } else if (section === 'media') {
+      if (section === 'favorites') list = await listFavoriteFiles()
+      else if (section === 'trash') list = await listDeletedFiles()
+      else if (section === 'media') {
         const all = await listFiles()
         list = all.filter(
           (f) =>
@@ -126,15 +121,10 @@ export default function DataStorage() {
               f.type.startsWith('audio/') ||
               /\.(jpg|jpeg|png|gif|webp|mp4|webm|mp3|wav)$/i.test(f.name))
         )
-      } else if (selectedFolder) {
-        list = await listFiles(selectedFolder.path)
-      } else {
-        // Vista raíz: no listar todos los archivos; solo carpetas
-        list = []
-      }
-      setFiles(list)
+      } else if (selectedFolder) list = await listFiles(selectedFolder.path)
+      else list = []
 
-      // Stats globales (sin eliminados)
+      setFiles(list)
       const every = await listFiles()
       const active = every.filter((f) => !f.isDeleted)
       setAllFilesCount({
@@ -149,11 +139,8 @@ export default function DataStorage() {
     }
   }, [year, section, selectedFolder, toast])
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  useEffect(() => { refresh() }, [refresh])
 
-  // Sync search from URL once
   useEffect(() => {
     const q = searchParams.get('q')
     if (q) setSearch(q)
@@ -163,9 +150,7 @@ export default function DataStorage() {
     let list = files
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter(
-        (f) => f.name.toLowerCase().includes(q) || f.type.toLowerCase().includes(q)
-      )
+      list = list.filter((f) => f.name.toLowerCase().includes(q) || f.type.toLowerCase().includes(q))
     }
     return [...list].sort((a, b) => {
       let cmp = 0
@@ -183,33 +168,20 @@ export default function DataStorage() {
     return folders.filter((f) => f.tema.toLowerCase().includes(q))
   }, [folders, section, selectedFolder, search])
 
-  /* ─── Actions ─── */
-
   async function handleUpload(fileList: FileList | null) {
     if (!fileList?.length) return
-    const target =
-      selectedFolder?.path ||
-      `Cronograma de Capacitaciones - ${year}/Documentos generales`
-
-    // Auto-create default folder if uploading at root without selection
     if (!selectedFolder) {
-      const existing = folders.find((f) => f.path === target)
-      if (!existing) {
-        await saveFolder({
-          year,
-          tema: 'Documentos generales',
-          path: target,
-        })
-      }
+      toast('Abre una carpeta del programa (tema) antes de subir materiales', 'error')
+      return
     }
-
+    const target = selectedFolder.path
     setUploading(true)
     try {
       let ok = 0
       for (const file of Array.from(fileList)) {
         await saveFile({
           folderPath: target,
-          folderId: selectedFolder?.id ?? null,
+          folderId: selectedFolder.id ?? null,
           name: file.name,
           type: file.type || 'application/octet-stream',
           size: file.size,
@@ -218,13 +190,6 @@ export default function DataStorage() {
         ok++
       }
       toast(ok === 1 ? 'Archivo subido' : `${ok} archivos subidos`, 'success')
-      if (!selectedFolder) {
-        // Enter the general folder after upload at root
-        const all = await listFolders(year, false)
-        setFolders(all)
-        const fol = all.find((f) => f.path === target)
-        if (fol) setSelectedFolder(fol)
-      }
       await refresh()
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Error al subir', 'error')
@@ -241,8 +206,7 @@ export default function DataStorage() {
       return
     }
     const path = `Cronograma de Capacitaciones - ${year}/${name}`
-    const exists = folders.some((f) => f.path === path || f.tema.toLowerCase() === name.toLowerCase())
-    if (exists) {
+    if (folders.some((f) => f.path === path || f.tema.toLowerCase() === name.toLowerCase())) {
       toast('Ya existe una carpeta con ese nombre', 'error')
       return
     }
@@ -255,6 +219,10 @@ export default function DataStorage() {
 
   async function handleCreateOffice(kind: 'excel' | 'word' | 'powerpoint') {
     setCreateOpen(false)
+    if (!selectedFolder) {
+      toast('Selecciona un tema del programa para crear el documento', 'error')
+      return
+    }
     const names = {
       excel: 'Libro nuevo.xlsx',
       word: 'Documento nuevo.docx',
@@ -265,16 +233,9 @@ export default function DataStorage() {
       word: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       powerpoint: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     }
-    const target =
-      selectedFolder?.path ||
-      `Cronograma de Capacitaciones - ${year}/Documentos generales`
-    if (!selectedFolder) {
-      const exists = folders.find((f) => f.path === target)
-      if (!exists) await saveFolder({ year, tema: 'Documentos generales', path: target })
-    }
     await saveFile({
-      folderPath: target,
-      folderId: selectedFolder?.id ?? null,
+      folderPath: selectedFolder.path,
+      folderId: selectedFolder.id ?? null,
       name: names[kind],
       type: mimes[kind],
       size: 1024,
@@ -362,7 +323,6 @@ export default function DataStorage() {
     setSection('all')
   }
 
-  /* ─── Drag & drop ─── */
   function onDragOver(e: React.DragEvent) {
     e.preventDefault()
     setIsDragOver(true)
@@ -387,24 +347,33 @@ export default function DataStorage() {
       ? 'Elementos multimedia'
       : selectedFolder
       ? selectedFolder.tema
-      : 'Mis archivos'
+      : `Programa ${year}`
 
-  const storagePct = Math.min(100, (allFilesCount.bytes / (1024 * 1024 * 100)) * 100) // scale vs 100 MB soft quota visual
+  const storagePct = Math.min(100, (allFilesCount.bytes / (1024 * 1024 * 100)) * 100)
 
   return (
     <div className="h-full flex min-h-0" style={{ background: 'var(--bg)' }}>
-      {/* ── Sidebar ── */}
       <aside
-        className="w-[240px] shrink-0 flex flex-col border-r overflow-y-auto"
+        className="w-[248px] shrink-0 flex flex-col border-r overflow-y-auto"
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
       >
-        <div className="p-3">
+        <div className="px-3 pt-3 pb-2">
+          <div className="flex items-center gap-2 px-1 mb-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary)' }}>
+              <Building2 size={16} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--primary-text)' }}>ROMEX</div>
+              <div className="text-[12px] font-semibold truncate">Materiales</div>
+            </div>
+          </div>
+
           <div className="relative" ref={createRef}>
             <button
               type="button"
               onClick={() => setCreateOpen(!createOpen)}
-              className="w-full h-9 rounded-full text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm"
-              style={{ background: '#0078d4' }}
+              className="w-full h-9 rounded-lg text-white text-[13px] font-semibold flex items-center justify-center gap-2 shadow-sm"
+              style={{ background: 'var(--primary)' }}
             >
               <Plus size={16} strokeWidth={2.5} /> Crear o cargar
             </button>
@@ -414,7 +383,7 @@ export default function DataStorage() {
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               >
                 <button type="button" className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--row-hover)] text-left font-medium" onClick={() => { setCreateOpen(false); setNewFolderModal(true) }}>
-                  <FolderPlus size={15} style={{ color: '#ffb900' }} /> Carpeta
+                  <FolderPlus size={15} style={{ color: 'var(--accent)' }} /> Carpeta
                 </button>
                 <button type="button" className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--row-hover)] text-left font-medium" onClick={() => handleCreateOffice('excel')}>
                   <FileSpreadsheet size={15} style={{ color: '#107c41' }} /> Libro de Excel
@@ -427,7 +396,7 @@ export default function DataStorage() {
                 </button>
                 <div className="h-px my-1" style={{ background: 'var(--border)' }} />
                 <label className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--row-hover)] text-left font-medium cursor-pointer">
-                  <Upload size={15} style={{ color: '#0078d4' }} /> Cargar archivos
+                  <Upload size={15} style={{ color: 'var(--primary)' }} /> Cargar archivos
                   <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => { setCreateOpen(false); handleUpload(e.target.files) }} />
                 </label>
               </div>
@@ -438,7 +407,7 @@ export default function DataStorage() {
         <nav className="px-2 space-y-0.5 text-[13px]">
           {(
             [
-              { id: 'all' as const, label: 'Mis archivos', icon: FolderOpen },
+              { id: 'all' as const, label: 'Programa anual', icon: FolderOpen },
               { id: 'favorites' as const, label: 'Favoritos', icon: Star },
               { id: 'media' as const, label: 'Multimedia', icon: ImageIcon },
               { id: 'trash' as const, label: 'Papelera', icon: Trash2 },
@@ -465,8 +434,7 @@ export default function DataStorage() {
           })}
         </nav>
 
-        {/* Year / program tree */}
-        <div className="mt-4 px-2">
+        <div className="mt-4 px-2 flex-1 min-h-0 flex flex-col">
           <button
             type="button"
             className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider"
@@ -474,10 +442,10 @@ export default function DataStorage() {
             onClick={() => setYearsOpen((o) => !o)}
           >
             {yearsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            Programa {year}
+            Temas · {year}
           </button>
           {yearsOpen && (
-            <div className="mt-1 space-y-0.5 max-h-[280px] overflow-y-auto">
+            <div className="mt-1 space-y-0.5 overflow-y-auto flex-1">
               <div className="flex gap-1 px-2 mb-1">
                 {[2025, 2026, 2027].map((y) => (
                   <button
@@ -494,12 +462,12 @@ export default function DataStorage() {
                   </button>
                 ))}
               </div>
-              {folders.slice(0, 40).map((f) => (
+              {folders.map((f) => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={() => openFolder(f)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-[12px] truncate"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-[12px]"
                   style={{
                     background: selectedFolder?.id === f.id ? 'var(--primary-soft)' : 'transparent',
                     color: selectedFolder?.id === f.id ? 'var(--primary-text)' : 'var(--text-secondary)',
@@ -513,17 +481,17 @@ export default function DataStorage() {
               ))}
               {!folders.length && (
                 <p className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  Sin carpetas. Crea el programa en Cronograma.
+                  Sin carpetas. Abre Cronograma para cargar el programa.
                 </p>
               )}
             </div>
           )}
         </div>
 
-        <div className="mt-auto p-3 border-t" style={{ borderColor: 'var(--border)' }}>
+        <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
           <div className="text-[11px] font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>Almacenamiento local</div>
           <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: 'var(--surface-2)' }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.max(2, storagePct)}%`, background: '#0078d4' }} />
+            <div className="h-full rounded-full" style={{ width: `${Math.max(2, storagePct)}%`, background: 'var(--primary)' }} />
           </div>
           <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
             {formatSize(allFilesCount.bytes)} · {allFilesCount.count} archivos
@@ -531,13 +499,11 @@ export default function DataStorage() {
         </div>
       </aside>
 
-      {/* ── Main ── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        {/* Toolbar */}
         <div className="px-5 py-3 flex flex-wrap items-center gap-3 border-b shrink-0" style={{ borderColor: 'var(--border)', background: 'var(--header-bg)' }}>
           <div className="flex items-center gap-1 text-[13px] min-w-0">
             <button type="button" className="font-semibold hover:underline" style={{ color: 'var(--primary-text)' }} onClick={goRoot}>
-              Mis archivos
+              Programa {year}
             </button>
             {selectedFolder && (
               <>
@@ -557,15 +523,10 @@ export default function DataStorage() {
 
           <div className="relative max-w-xs w-full">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-            <input
-              className="input w-full pl-9 text-[12px]"
-              placeholder="Buscar en archivos…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <input className="input w-full pl-9 text-[12px]" placeholder="Buscar tema o archivo…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
-          <button type="button" className="btn-icon" title="Actualizar" onClick={() => refresh()}>
+          <button type="button" className="btn-icon" title="Sincronizar con cronograma" onClick={() => refresh()}>
             <RefreshCw size={15} />
           </button>
           <button type="button" className="btn-icon" title={viewMode === 'list' ? 'Cuadrícula' : 'Lista'} onClick={() => setViewMode((v) => (v === 'list' ? 'grid' : 'list'))}>
@@ -582,25 +543,26 @@ export default function DataStorage() {
           )}
         </div>
 
-        {/* Content + drop zone */}
-        <div
-          className="flex-1 flex min-h-0"
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-        >
+        <div className="flex-1 flex min-h-0" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
           <div className="flex-1 overflow-auto p-5 relative">
             {isDragOver && section !== 'trash' && (
               <div
                 className="absolute inset-3 z-20 rounded-xl border-2 border-dashed flex items-center justify-center text-[15px] font-semibold"
-                style={{ borderColor: '#0078d4', background: 'rgba(0,120,212,0.08)', color: '#0078d4' }}
+                style={{ borderColor: 'var(--primary)', background: 'var(--primary-soft)', color: 'var(--primary-text)' }}
               >
-                Suelta los archivos para subirlos aquí
+                {selectedFolder ? `Suelta en «${selectedFolder.tema}»` : 'Abre un tema antes de soltar archivos'}
               </div>
             )}
 
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-[20px] font-semibold tracking-tight">{title}</h1>
+              <div>
+                <h1 className="text-[20px] font-semibold tracking-tight">{title}</h1>
+                {!selectedFolder && section === 'all' && (
+                  <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    {folders.length} temas del cronograma · Exportadora ROMEX S.A.
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-muted)' }}>
                 <button type="button" className="hover:underline" onClick={() => { setSortBy('name'); setSortAsc((a) => !a) }}>Nombre</button>
                 <span>·</span>
@@ -611,7 +573,7 @@ export default function DataStorage() {
             </div>
 
             {loading ? (
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando…</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sincronizando con el programa…</p>
             ) : uploading ? (
               <p className="text-sm" style={{ color: 'var(--primary-text)' }}>Subiendo archivos…</p>
             ) : viewMode === 'list' ? (
@@ -632,7 +594,6 @@ export default function DataStorage() {
                         key={f.id}
                         className="border-b tr-hover cursor-pointer"
                         style={{ borderColor: 'var(--border)' }}
-                        onDoubleClick={() => openFolder(f)}
                         onClick={() => openFolder(f)}
                       >
                         <td className="px-3 py-2.5"><FolderIcon /></td>
@@ -671,13 +632,15 @@ export default function DataStorage() {
                             {section === 'trash' ? (
                               <>
                                 <button type="button" className="btn-icon" title="Restaurar" onClick={(e) => { e.stopPropagation(); onRestore(file) }}><RefreshCw size={14} /></button>
-                                <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} title="Eliminar permanente" onClick={(e) => { e.stopPropagation(); onHardDelete(file) }}><Trash2 size={14} /></button>
+                                <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} title="Eliminar" onClick={(e) => { e.stopPropagation(); onHardDelete(file) }}><Trash2 size={14} /></button>
                               </>
                             ) : (
                               <>
                                 <button type="button" className="btn-icon" title="Abrir" onClick={(e) => { e.stopPropagation(); setPreviewFile(file) }}><Eye size={14} /></button>
                                 <button type="button" className="btn-icon" title="Descargar" onClick={(e) => { e.stopPropagation(); onDownload(file) }}><Download size={14} /></button>
-                                <button type="button" className="btn-icon" title="Favorito" onClick={(e) => { e.stopPropagation(); onToggleFavorite(file) }}><Star size={14} fill={file.isFavorite ? 'var(--accent)' : 'none'} style={{ color: file.isFavorite ? 'var(--accent)' : undefined }} /></button>
+                                <button type="button" className="btn-icon" title="Favorito" onClick={(e) => { e.stopPropagation(); onToggleFavorite(file) }}>
+                                  <Star size={14} fill={file.isFavorite ? 'var(--accent)' : 'none'} style={{ color: file.isFavorite ? 'var(--accent)' : undefined }} />
+                                </button>
                                 <button type="button" className="btn-icon" title="Renombrar" onClick={(e) => { e.stopPropagation(); setRenameModal(file); setRenameValue(file.name) }}><Edit3 size={14} /></button>
                                 <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} title="Papelera" onClick={(e) => { e.stopPropagation(); onSoftDelete(file) }}><Trash2 size={14} /></button>
                               </>
@@ -696,12 +659,14 @@ export default function DataStorage() {
                       {section === 'trash'
                         ? 'La papelera está vacía'
                         : section === 'favorites'
-                        ? 'Marca archivos con la estrella para verlos aquí'
-                        : 'Arrastra archivos o usa «Crear o cargar»'}
+                        ? 'Marca archivos con la estrella'
+                        : selectedFolder
+                        ? 'Sube PPT, PDF, Word o videos de esta capacitación'
+                        : 'Selecciona un tema a la izquierda para ver y subir materiales'}
                     </p>
-                    {section === 'all' && (
+                    {selectedFolder && (
                       <label className="btn btn-primary cursor-pointer inline-flex">
-                        <Upload size={14} /> Subir archivos
+                        <Upload size={14} /> Subir materiales
                         <input type="file" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} />
                       </label>
                     )}
@@ -709,16 +674,9 @@ export default function DataStorage() {
                 )}
               </div>
             ) : (
-              /* Grid */
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 animate-in">
                 {filteredFolders.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onDoubleClick={() => openFolder(f)}
-                    onClick={() => openFolder(f)}
-                    className="card card-hover p-4 text-left flex flex-col items-start gap-2"
-                  >
+                  <button key={f.id} type="button" onClick={() => openFolder(f)} className="card card-hover p-4 text-left flex flex-col items-start gap-2">
                     <FolderIcon />
                     <span className="text-[12px] font-medium line-clamp-2">{f.tema}</span>
                   </button>
@@ -740,12 +698,8 @@ export default function DataStorage() {
             )}
           </div>
 
-          {/* Details panel */}
           {showDetails && (
-            <aside
-              className="w-72 shrink-0 border-l overflow-y-auto p-4 animate-in"
-              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-            >
+            <aside className="w-72 shrink-0 border-l overflow-y-auto p-4 animate-in" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="flex items-center justify-between mb-4">
                 <span className="font-semibold text-[14px]">Detalles</span>
                 <button type="button" className="btn-icon" onClick={() => setShowDetails(false)}><X size={15} /></button>
@@ -771,24 +725,18 @@ export default function DataStorage() {
                       <div className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fecha</div>
                       <div style={{ color: 'var(--text-secondary)' }}>{new Date(activeFile.createdAt).toLocaleString('es-PE')}</div>
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Tipo</div>
-                      <div className="font-mono text-[11px]" style={{ color: 'var(--text-secondary)' }}>{activeFile.type || '—'}</div>
-                    </div>
                   </div>
                   {section !== 'trash' && (
                     <div className="flex gap-1 pt-2">
-                      <button type="button" className="btn-icon" title="Descargar" onClick={() => onDownload(activeFile)}><Download size={14} /></button>
-                      <button type="button" className="btn-icon" title="Favorito" onClick={() => onToggleFavorite(activeFile)}><Star size={14} /></button>
-                      <button type="button" className="btn-icon" title="Renombrar" onClick={() => { setRenameModal(activeFile); setRenameValue(activeFile.name) }}><Edit3 size={14} /></button>
-                      <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} title="Papelera" onClick={() => onSoftDelete(activeFile)}><Trash2 size={14} /></button>
+                      <button type="button" className="btn-icon" onClick={() => onDownload(activeFile)}><Download size={14} /></button>
+                      <button type="button" className="btn-icon" onClick={() => onToggleFavorite(activeFile)}><Star size={14} /></button>
+                      <button type="button" className="btn-icon" onClick={() => { setRenameModal(activeFile); setRenameValue(activeFile.name) }}><Edit3 size={14} /></button>
+                      <button type="button" className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => onSoftDelete(activeFile)}><Trash2 size={14} /></button>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-[12px] text-center py-8" style={{ color: 'var(--text-muted)' }}>
-                  Selecciona un archivo para ver detalles
-                </p>
+                <p className="text-[12px] text-center py-8" style={{ color: 'var(--text-muted)' }}>Selecciona un archivo</p>
               )}
             </aside>
           )}
@@ -805,8 +753,8 @@ export default function DataStorage() {
               <button type="button" className="btn-icon" onClick={() => setNewFolderModal(false)}><X size={15} /></button>
             </div>
             <div className="p-5 space-y-3">
-              <input className="input w-full" placeholder="Nombre…" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} autoFocus onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()} />
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Se creará dentro del programa {year}</p>
+              <input className="input w-full" placeholder="Nombre del tema…" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} autoFocus onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()} />
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Programa {year} · idealmente el mismo nombre que en Cronograma</p>
               <div className="flex gap-2">
                 <button type="button" className="btn btn-ghost flex-1" onClick={() => setNewFolderModal(false)}>Cancelar</button>
                 <button type="button" className="btn btn-primary flex-1" onClick={handleCreateFolder}>Crear</button>
