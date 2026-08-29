@@ -1,18 +1,16 @@
 {
   "name": "capacitaciones-v2",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-table": "^8.21.2",
     "date-fns": "^4.1.0",
     "dexie": "^4.0.11",
-    "dexie-react-hooks": "^1.1.7",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.475.0",

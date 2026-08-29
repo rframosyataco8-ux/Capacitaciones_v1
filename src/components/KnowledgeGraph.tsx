@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import type { Capacitacion, Exam, MaterialFolder } from '../lib/db'
 
 interface Node {
@@ -22,6 +22,12 @@ const TYPE_COLOR = {
   carpeta: '#047857',
 }
 
+function shortLabel(s: string, max: number) {
+  const t = (s || '').trim()
+  if (t.length <= max) return t
+  return t.slice(0, max - 1) + '…'
+}
+
 export default function KnowledgeGraph({
   temas,
   exams,
@@ -36,62 +42,69 @@ export default function KnowledgeGraph({
   const [selected, setSelected] = useState<string | null>(null)
   const [nodes, setNodes] = useState<Node[]>([])
   const edgesRef = useRef<Edge[]>([])
-  const anim = useRef(0)
+  const frameRef = useRef(0)
+  const ticksRef = useRef(0)
 
   const built = useMemo(() => {
     const ns: Node[] = []
     const es: Edge[] = []
     const cx = width / 2
     const cy = height / 2
+    const temaIds = new Map<string, string>() // tema name lower -> node id
 
-    temas.slice(0, 18).forEach((t, i) => {
-      const angle = (i / Math.min(temas.length, 18)) * Math.PI * 2
-      const r = 160 + (i % 3) * 35
+    const list = temas.slice(0, 20)
+    list.forEach((t, i) => {
+      const id = `t-${t.id ?? t.codigo ?? i}`
+      temaIds.set(t.tema.trim().toLowerCase(), id)
+      const angle = (i / Math.max(list.length, 1)) * Math.PI * 2 - Math.PI / 2
+      const r = 150 + (i % 3) * 30
       ns.push({
-        id: `t-${t.id}`,
-        label: t.tema.length > 28 ? t.tema.slice(0, 26) + '…' : t.tema,
+        id,
+        label: shortLabel(t.tema, 26),
         type: 'tema',
         x: cx + Math.cos(angle) * r,
-        y: cy + Math.sin(angle) * r,
+        y: cy + Math.sin(angle) * r * 0.85,
         vx: 0,
         vy: 0,
       })
     })
 
-    exams.forEach((ex, i) => {
-      const id = `e-${ex.id}`
+    exams.slice(0, 10).forEach((ex, i) => {
+      const id = `e-${ex.id ?? i}`
       ns.push({
         id,
-        label: ex.titulo.length > 24 ? ex.titulo.slice(0, 22) + '…' : ex.titulo,
+        label: shortLabel(ex.titulo, 22),
         type: 'examen',
-        x: cx + (i - exams.length / 2) * 50,
-        y: cy - 200,
+        x: 80 + (i % 5) * 160,
+        y: 50 + Math.floor(i / 5) * 40,
         vx: 0,
         vy: 0,
       })
-      if (ex.capacitacionId) {
-        es.push({ from: id, to: `t-${ex.capacitacionId}` })
-      } else if (ex.tema) {
-        const match = temas.find((t) => t.tema === ex.tema)
-        if (match) es.push({ from: id, to: `t-${match.id}` })
+      let target: string | undefined
+      if (ex.capacitacionId != null) {
+        target = `t-${ex.capacitacionId}`
+      }
+      if (!target && ex.tema) {
+        target = temaIds.get(ex.tema.trim().toLowerCase())
+      }
+      if (target && ns.some((n) => n.id === target)) {
+        es.push({ from: id, to: target })
       }
     })
 
-    // Sample folders linked by tema name
-    const folderSample = folders.slice(0, 12)
-    folderSample.forEach((f, i) => {
-      const id = `f-${f.id}`
+    folders.slice(0, 12).forEach((f, i) => {
+      const id = `f-${f.id ?? i}`
       ns.push({
         id,
-        label: f.tema.length > 22 ? f.tema.slice(0, 20) + '…' : f.tema,
+        label: shortLabel(f.tema, 20),
         type: 'carpeta',
-        x: cx + (i - folderSample.length / 2) * 40,
-        y: cy + 210,
+        x: 80 + (i % 6) * 140,
+        y: height - 50 - Math.floor(i / 6) * 36,
         vx: 0,
         vy: 0,
       })
-      const match = temas.find((t) => t.tema === f.tema)
-      if (match) es.push({ from: id, to: `t-${match.id}` })
+      const target = temaIds.get(f.tema.trim().toLowerCase())
+      if (target) es.push({ from: id, to: target })
     })
 
     return { ns, es }
@@ -100,23 +113,28 @@ export default function KnowledgeGraph({
   useEffect(() => {
     setNodes(built.ns.map((n) => ({ ...n })))
     edgesRef.current = built.es
+    ticksRef.current = 0
   }, [built])
 
-  // Simple force simulation
   useEffect(() => {
     let alive = true
     const tick = () => {
       if (!alive) return
+      ticksRef.current += 1
+      // Run limited physics then stop (stable graph)
+      if (ticksRef.current > 180) return
+
       setNodes((prev) => {
+        if (prev.length === 0) return prev
         const next = prev.map((n) => ({ ...n }))
-        const k = 0.004
-        // repulsion
-        for (let i = 0; i < next.length; i++) {
-          for (let j = i + 1; j < next.length; j++) {
+        const n = next.length
+
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
             let dx = next[j].x - next[i].x
             let dy = next[j].y - next[i].y
-            let dist = Math.sqrt(dx * dx + dy * dy) || 1
-            const force = 800 / (dist * dist)
+            let dist = Math.sqrt(dx * dx + dy * dy) || 0.01
+            const force = Math.min(400 / (dist * dist), 8)
             dx = (dx / dist) * force
             dy = (dy / dist) * force
             next[i].vx -= dx
@@ -125,38 +143,38 @@ export default function KnowledgeGraph({
             next[j].vy += dy
           }
         }
-        // spring edges
+
         for (const e of edgesRef.current) {
-          const a = next.find((n) => n.id === e.from)
-          const b = next.find((n) => n.id === e.to)
+          const a = next.find((x) => x.id === e.from)
+          const b = next.find((x) => x.id === e.to)
           if (!a || !b) continue
           const dx = b.x - a.x
           const dy = b.y - a.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          const target = 120
-          const f = (dist - target) * k
+          const dist = Math.sqrt(dx * dx + dy * dy) || 0.01
+          const f = (dist - 110) * 0.006
           a.vx += (dx / dist) * f
           a.vy += (dy / dist) * f
           b.vx -= (dx / dist) * f
           b.vy -= (dy / dist) * f
         }
-        // center gravity + damp
-        for (const n of next) {
-          n.vx += (width / 2 - n.x) * 0.0008
-          n.vy += (height / 2 - n.y) * 0.0008
-          n.vx *= 0.85
-          n.vy *= 0.85
-          n.x = Math.max(40, Math.min(width - 40, n.x + n.vx))
-          n.y = Math.max(30, Math.min(height - 30, n.y + n.vy))
+
+        for (const node of next) {
+          node.vx += (width / 2 - node.x) * 0.001
+          node.vy += (height / 2 - node.y) * 0.001
+          node.vx *= 0.82
+          node.vy *= 0.82
+          node.x = Math.max(50, Math.min(width - 50, node.x + node.vx))
+          node.y = Math.max(40, Math.min(height - 40, node.y + node.vy))
         }
         return next
       })
-      anim.current = requestAnimationFrame(tick)
+
+      frameRef.current = requestAnimationFrame(tick)
     }
-    anim.current = requestAnimationFrame(tick)
+    frameRef.current = requestAnimationFrame(tick)
     return () => {
       alive = false
-      cancelAnimationFrame(anim.current)
+      cancelAnimationFrame(frameRef.current)
     }
   }, [built])
 
@@ -186,7 +204,7 @@ export default function KnowledgeGraph({
         ))}
         {selected && (
           <span className="text-[12px] ml-auto truncate max-w-xs" style={{ color: 'var(--text-muted)' }}>
-            Seleccionado: {nodes.find((n) => n.id === selected)?.label}
+            {nodes.find((n) => n.id === selected)?.label}
           </span>
         )}
       </div>
@@ -198,19 +216,19 @@ export default function KnowledgeGraph({
           const active = selected === e.from || selected === e.to
           return (
             <line
-              key={i}
+              key={`${e.from}-${e.to}-${i}`}
               x1={a.x}
               y1={a.y}
               x2={b.x}
               y2={b.y}
               stroke={active ? 'var(--primary)' : 'var(--border-strong)'}
               strokeWidth={active ? 2 : 1}
-              opacity={active ? 0.9 : 0.45}
+              opacity={active ? 0.95 : 0.4}
             />
           )
         })}
         {nodes.map((n) => {
-          const r = n.type === 'tema' ? 22 : 16
+          const r = n.type === 'tema' ? 20 : 14
           const active = selected === n.id
           return (
             <g
@@ -220,16 +238,16 @@ export default function KnowledgeGraph({
               onClick={() => setSelected((s) => (s === n.id ? null : n.id))}
             >
               <circle
-                r={r + (active ? 3 : 0)}
+                r={r + (active ? 2 : 0)}
                 fill={TYPE_COLOR[n.type]}
-                opacity={active ? 1 : 0.9}
-                stroke={active ? 'var(--accent)' : 'transparent'}
-                strokeWidth={2}
+                opacity={0.92}
+                stroke={active ? 'var(--accent)' : 'rgba(255,255,255,0.2)'}
+                strokeWidth={active ? 2.5 : 1}
               />
               <text
-                y={r + 14}
+                y={r + 12}
                 textAnchor="middle"
-                fontSize={10}
+                fontSize={9.5}
                 fill="var(--text-secondary)"
                 style={{ pointerEvents: 'none' }}
               >
