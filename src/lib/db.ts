@@ -348,31 +348,75 @@ const JUNK_FOLDER_NAMES = new Set(
   ].map((s) => s.toLowerCase())
 )
 
-/** Crea 1 carpeta por tema del programa y elimina basura (GRANO 2024, Sap, etc.) */
+/** Una sola carpeta por tema único del programa (no por cada sesión/fecha). */
 export async function syncFoldersFromCronograma(year: number) {
   const now = new Date().toISOString()
   const caps = await db.capacitaciones.where('year').equals(year).toArray()
-  const validTemas = new Set(caps.map((c) => c.tema.trim().toLowerCase()))
-  const folders = await db.folders.where('year').equals(year).toArray()
 
+  // Temas únicos (normalizado → nombre canónico)
+  const uniqueByKey = new Map<string, string>()
   for (const c of caps) {
-    const path = `Cronograma de Capacitaciones - ${year}/${c.tema}`
-    const exists = folders.some(
-      (f) => f.path === path || f.tema.trim().toLowerCase() === c.tema.trim().toLowerCase()
-    )
+    const key = c.tema.trim().toLowerCase()
+    if (!key) continue
+    if (!uniqueByKey.has(key)) uniqueByKey.set(key, c.tema.trim())
+  }
+  const validTemas = new Set(uniqueByKey.keys())
+
+  let folders = await db.folders.where('year').equals(year).toArray()
+
+  // 1) Crear solo las que falten (1 por tema)
+  for (const [key, tema] of uniqueByKey) {
+    const exists = folders.some((f) => f.tema.trim().toLowerCase() === key && !f.isDeleted)
     if (!exists) {
-      await db.folders.add({
+      const path = `Cronograma de Capacitaciones - ${year}/${tema}`
+      const id = await db.folders.add({
         year,
-        tema: c.tema,
+        tema,
         path,
         isFavorite: false,
         isDeleted: false,
         color: '#0f4c81',
         createdAt: now,
       })
+      folders.push({ id, year, tema, path, isFavorite: false, isDeleted: false, color: '#0f4c81', createdAt: now })
     }
   }
 
+  // 2) Fusionar duplicados del mismo tema (conservar la que tenga archivos o la más antigua)
+  folders = await db.folders.where('year').equals(year).toArray()
+  const byTema = new Map<string, typeof folders>()
+  for (const f of folders) {
+    if (f.isDeleted) continue
+    const key = f.tema.trim().toLowerCase()
+    if (!byTema.has(key)) byTema.set(key, [])
+    byTema.get(key)!.push(f)
+  }
+
+  for (const [, group] of byTema) {
+    if (group.length <= 1) continue
+    let keep = group[0]
+    let keepFiles = await db.files.where('folderPath').equals(keep.path).count()
+    for (let i = 1; i < group.length; i++) {
+      const f = group[i]
+      const n = await db.files.where('folderPath').equals(f.path).count()
+      if (n > keepFiles || (n === keepFiles && (f.id ?? 0) < (keep.id ?? 0))) {
+        keep = f
+        keepFiles = n
+      }
+    }
+    for (const f of group) {
+      if (f.id === keep.id) continue
+      const files = await db.files.where('folderPath').equals(f.path).toArray()
+      for (const file of files) {
+        if (file.id) {
+          await db.files.update(file.id, { folderPath: keep.path, folderId: keep.id ?? null })
+        }
+      }
+      if (f.id) await db.folders.delete(f.id)
+    }
+  }
+
+  // 3) Eliminar basura / temas que ya no existen en el programa
   const refreshed = await db.folders.where('year').equals(year).toArray()
   for (const f of refreshed) {
     const key = f.tema.trim().toLowerCase()
@@ -441,12 +485,15 @@ export async function listCapacitaciones(year: number): Promise<Capacitacion[]> 
 }
 
 export async function ensureFolder(year: number, tema: string) {
-  const path = `Cronograma de Capacitaciones - ${year}/${tema}`
-  const existing = await db.folders.where('path').equals(path).first()
+  const clean = tema.trim()
+  const key = clean.toLowerCase()
+  const all = await db.folders.where('year').equals(year).toArray()
+  const existing = all.find((f) => !f.isDeleted && f.tema.trim().toLowerCase() === key)
   if (existing) return existing.id
+  const path = `Cronograma de Capacitaciones - ${year}/${clean}`
   return db.folders.add({
     year,
-    tema,
+    tema: clean,
     path,
     isFavorite: false,
     isDeleted: false,
