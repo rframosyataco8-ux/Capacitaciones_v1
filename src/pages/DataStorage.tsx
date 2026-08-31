@@ -341,7 +341,27 @@ export default function DataStorage() {
 
         <div className="flex-1 overflow-auto p-5" onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }} onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false) }} onDrop={(e) => { e.preventDefault(); setIsDragOver(false); if (section !== 'trash') handleUpload(e.dataTransfer.files) }}>
           {isDragOver && <div className="mb-3 p-4 rounded-xl border-2 border-dashed text-center text-sm font-semibold" style={{ borderColor: 'var(--primary)', background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>Suelta archivos aquí</div>}
-          <h1 className="text-[20px] font-semibold mb-4">{title}</h1>
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+            <div>
+              <h1 className="text-[20px] font-semibold tracking-tight">{title}</h1>
+              {section === 'all' && !selectedFolder && (
+                <p className="text-[12px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {folders.length} tema{folders.length === 1 ? '' : 's'} del programa · una carpeta por capacitación
+                </p>
+              )}
+              {selectedFolder && (
+                <p className="text-[12px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Arrastra archivos aquí o usa Crear o cargar
+                </p>
+              )}
+            </div>
+            {selectedFolder && section === 'all' && (
+              <label className="btn btn-primary h-9 px-4 cursor-pointer text-[12px]">
+                <Upload size={14} /> Subir archivos
+                <input type="file" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} />
+              </label>
+            )}
+          </div>
           {loading ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando…</p> : uploading ? <p className="text-sm" style={{ color: 'var(--primary-text)' }}>Subiendo…</p> : (
             <div className="table-wrap">
               <table className="w-full text-[13px]">
@@ -371,7 +391,7 @@ export default function DataStorage() {
                       <td className="px-3 py-2.5">{fileIcon(file.name, file.type)}</td>
                       <td className="px-3 py-2.5 font-medium"><span className="inline-flex items-center gap-1.5">{file.name}{file.isFavorite && <Star size={12} fill="var(--accent)" style={{ color: 'var(--accent)' }} />}</span></td>
                       <td className="px-3 py-2.5" style={{ color: 'var(--text-muted)' }}>{formatDate(file.createdAt)}</td>
-                      <td className="px-3 py-2.5 hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>RAMOS YATACO, RODRIGO</td>
+                      <td className="px-3 py-2.5 hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Equipo Calidad</td>
                       <td className="px-3 py-2.5" style={{ color: 'var(--text-muted)' }}>{formatSize(file.size)}</td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="inline-flex gap-0.5 opacity-0 group-hover:opacity-100">
@@ -395,7 +415,7 @@ export default function DataStorage() {
                 <div className="p-14 text-center">
                   <HardDrive size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
                   <p className="text-[14px] font-medium">Vacío</p>
-                  <p className="text-[12px] mt-1 mb-4" style={{ color: 'var(--text-secondary)' }}>{selectedFolder ? 'Sube materiales de esta capacitación' : 'Las carpetas del programa aparecen aquí (una por tema)'}</p>
+                  <p className="text-[12px] mt-1 mb-4" style={{ color: 'var(--text-secondary)' }}>{selectedFolder ? 'Sube materiales de esta capacitación' : 'Se sincronizan desde el cronograma anual. Un tema = una carpeta.'}</p>
                   {selectedFolder && (
                     <label className="btn btn-primary cursor-pointer inline-flex">
                       <Upload size={14} /> Subir
