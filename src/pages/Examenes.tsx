@@ -39,7 +39,6 @@ export default function Examenes() {
   const [exams, setExams] = useState<Exam[]>([])
   const [temas, setTemas] = useState<Capacitacion[]>([])
   const [loading, setLoading] = useState(true)
-
   const [editingExam, setEditingExam] = useState<Partial<Exam> | null>(null)
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -53,8 +52,8 @@ export default function Examenes() {
   const [preguntas, setPreguntas] = useState<ExamQuestion[]>([])
   const [activeTabBuilder, setActiveTabBuilder] = useState<'preguntas' | 'config' | 'theme'>('preguntas')
   const [listTab, setListTab] = useState<'recientes' | 'mios' | 'favoritos'>('recientes')
+  const [listSearch, setListSearch] = useState('')
   const [stylesPanelOpen, setStylesPanelOpen] = useState(false)
-
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null)
   const [takerName, setTakerName] = useState('')
   const [takerDni, setTakerDni] = useState('')
@@ -65,7 +64,6 @@ export default function Examenes() {
   const [examResult, setExamResult] = useState<ExamSubmission | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const submittingRef = useRef(false)
-
   const [analyticsExam, setAnalyticsExam] = useState<Exam | null>(null)
   const [submissions, setSubmissions] = useState<ExamSubmission[]>([])
   const [analyticsSearch, setAnalyticsSearch] = useState('')
@@ -125,15 +123,7 @@ export default function Examenes() {
     setMezclarPreguntas(false)
     setMostrarRespuestas(true)
     setSelectedThemeId('romex-cacao')
-    setPreguntas([{
-      id: uid(), tipo: 'multiple',
-      texto: '¿Cuál es el primer principio del sistema HACCP?',
-      puntos: 5,
-      opciones: ['Establecer límites críticos', 'Realizar un análisis de peligros', 'Determinar los PCC', 'Establecer vigilancia'],
-      correcta: 1,
-      explicacion: 'El Principio 1 es el análisis de peligros.',
-      obligatoria: true,
-    }])
+    setPreguntas([{ id: uid(), tipo: 'multiple', texto: '¿Cuál es el primer principio del sistema HACCP?', puntos: 5, opciones: ['Establecer límites críticos', 'Realizar un análisis de peligros', 'Determinar los PCC', 'Establecer vigilancia'], correcta: 1, explicacion: 'El Principio 1 es el análisis de peligros.', obligatoria: true }])
     setActiveTabBuilder('preguntas')
     setStylesPanelOpen(false)
     setView('builder')
@@ -162,20 +152,14 @@ export default function Examenes() {
     else if (tipo === 'casillas') { opciones = ['Opción 1', 'Opción 2', 'Opción 3']; correcta = [0] }
     else if (tipo === 'verdadero_falso') opciones = ['Verdadero', 'Falso']
     else if (tipo === 'escala') correcta = null
-    setPreguntas((prev) => [...prev, {
-      id: uid(), tipo, texto: '', puntos: 4, opciones, correcta, explicacion: '', obligatoria: true,
-      minEscala: 1, maxEscala: 5, etiquetaMin: 'Bajo', etiquetaMax: 'Excelente',
-    }])
+    setPreguntas((prev) => [...prev, { id: uid(), tipo, texto: '', puntos: 4, opciones, correcta, explicacion: '', obligatoria: true, minEscala: 1, maxEscala: 5, etiquetaMin: 'Bajo', etiquetaMax: 'Excelente' }])
   }
 
   function updateQuestion(id: string, patch: Partial<ExamQuestion>) {
     setPreguntas((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)))
   }
 
-  const activeTheme = useMemo(
-    () => FORM_THEMES.find((t) => t.id === selectedThemeId) || FORM_THEMES[0],
-    [selectedThemeId]
-  )
+  const activeTheme = useMemo(() => FORM_THEMES.find((t) => t.id === selectedThemeId) || FORM_THEMES[0], [selectedThemeId])
 
   async function handleSaveExam() {
     if (!titulo.trim()) { toast('Ingresa un título para el examen', 'error'); return }
@@ -185,20 +169,9 @@ export default function Examenes() {
     }
     const cap = temas.find((t) => t.id === temaId)
     await saveExam({
-      id: editingExam?.id,
-      titulo: titulo.trim(),
-      descripcion: descripcion.trim(),
-      capacitacionId: typeof temaId === 'number' ? temaId : null,
-      tema: cap?.tema || editingExam?.tema,
-      estado,
-      preguntas,
-      config: {
-        tiempoLimiteMinutos: tiempoLimite,
-        notaMinimaAprobatoria: notaMinima,
-        mezclarPreguntas,
-        mostrarRespuestasAlTerminar: mostrarRespuestas,
-        themeId: selectedThemeId,
-      },
+      id: editingExam?.id, titulo: titulo.trim(), descripcion: descripcion.trim(),
+      capacitacionId: typeof temaId === 'number' ? temaId : null, tema: cap?.tema || editingExam?.tema, estado, preguntas,
+      config: { tiempoLimiteMinutos: tiempoLimite, notaMinimaAprobatoria: notaMinima, mezclarPreguntas, mostrarRespuestasAlTerminar: mostrarRespuestas, themeId: selectedThemeId },
       createdAt: editingExam?.createdAt,
     })
     toast(editingExam?.id ? 'Evaluación actualizada' : 'Evaluación creada', 'success')
@@ -209,9 +182,7 @@ export default function Examenes() {
   async function handleSubmitExam(force = false) {
     if (!selectedExam || submittingRef.current) return
     if (!force) {
-      const unanswered = selectedExam.preguntas.filter(
-        (q) => q.obligatoria && (takerAnswers[q.id] === undefined || takerAnswers[q.id] === '')
-      )
+      const unanswered = selectedExam.preguntas.filter((q) => q.obligatoria && (takerAnswers[q.id] === undefined || takerAnswers[q.id] === ''))
       if (unanswered.length > 0) {
         if (!confirmar(`Tienes ${unanswered.length} pregunta(s) sin responder. ¿Entregar de todas formas?`)) return
       }
@@ -228,9 +199,7 @@ export default function Examenes() {
       } else if (q.tipo === 'casillas') {
         const correctas = Array.isArray(q.correcta) ? q.correcta.map(Number) : [Number(q.correcta)]
         const userChoices = Array.isArray(userAns) ? userAns.map(Number) : []
-        if (correctas.length === userChoices.length && correctas.every((v) => userChoices.includes(v))) {
-          puntosObtenidos += pMax
-        }
+        if (correctas.length === userChoices.length && correctas.every((v) => userChoices.includes(v))) puntosObtenidos += pMax
       } else if (q.tipo === 'escala') {
         if (userAns !== undefined && userAns !== null) puntosObtenidos += pMax
       } else if (q.tipo === 'abierta') {
@@ -243,18 +212,10 @@ export default function Examenes() {
     const aprobado = notaBase20 >= notaMinimaRequerida
     const totalSegundos = (selectedExam.config?.tiempoLimiteMinutos || 15) * 60
     const submissionData = {
-      examId: selectedExam.id!,
-      capacitacionId: selectedExam.capacitacionId,
-      evaluadoNombre: takerName.trim() || 'Sin nombre',
-      evaluadoDni: takerDni.trim(),
-      evaluadoArea: takerArea.trim(),
-      respuestas: takerAnswers,
-      puntajeObtenido: puntosObtenidos,
-      puntajeMaximo: puntosTotales,
-      notaBase20,
-      porcentaje,
-      aprobado,
-      tiempoEmpleadoSegundos: Math.max(0, totalSegundos - timeLeft),
+      examId: selectedExam.id!, capacitacionId: selectedExam.capacitacionId,
+      evaluadoNombre: takerName.trim() || 'Sin nombre', evaluadoDni: takerDni.trim(), evaluadoArea: takerArea.trim(),
+      respuestas: takerAnswers, puntajeObtenido: puntosObtenidos, puntajeMaximo: puntosTotales,
+      notaBase20, porcentaje, aprobado, tiempoEmpleadoSegundos: Math.max(0, totalSegundos - timeLeft),
     }
     const subId = await saveExamSubmission(submissionData)
     setExamResult({ ...submissionData, id: subId, fecha: new Date().toISOString() })
@@ -276,8 +237,7 @@ export default function Examenes() {
   }
 
   function handleShareLink(ex: Exam) {
-    const url = `${window.location.origin}/examenes?take=${ex.id}`
-    navigator.clipboard.writeText(url)
+    navigator.clipboard.writeText(`${window.location.origin}/examenes?take=${ex.id}`)
     toast('Enlace copiado al portapapeles', 'info')
   }
 
@@ -303,7 +263,14 @@ export default function Examenes() {
   const themeForExam = (ex: Exam) => FORM_THEMES.find((t) => t.id === ex.config?.themeId) || FORM_THEMES[0]
 
   if (view === 'list') {
-    const shown = listTab === 'favoritos' || listTab === 'mios' ? exams.filter((e) => e.estado === 'Activo') : exams
+    const shown = exams.filter((e) => {
+      if ((listTab === 'favoritos' || listTab === 'mios') && e.estado !== 'Activo') return false
+      if (listSearch.trim()) {
+        const q = listSearch.toLowerCase()
+        return e.titulo.toLowerCase().includes(q) || (e.tema || '').toLowerCase().includes(q)
+      }
+      return true
+    })
     return (
       <div className="h-full flex flex-col" style={{ background: 'var(--bg)' }}>
         <div className="page-header px-6 lg:px-8 py-5 shrink-0 border-b" style={{ borderColor: 'var(--border)', background: 'var(--header-bg)' }}>
@@ -317,12 +284,18 @@ export default function Examenes() {
               <Plus size={16} strokeWidth={2.5} /> Nueva evaluación
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-1 mt-5">
+          <div className="flex flex-wrap items-center gap-2 mt-5">
             {([{ id: 'recientes' as const, label: 'Todas', icon: ClipboardList }, { id: 'mios' as const, label: 'Activas', icon: CheckCircle2 }, { id: 'favoritos' as const, label: 'Publicadas', icon: Star }]).map((tab) => (
-              <button key={tab.id} type="button" onClick={() => setListTab(tab.id)} className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-medium rounded-lg" style={{ background: listTab === tab.id ? 'var(--primary-soft)' : 'transparent', color: listTab === tab.id ? 'var(--primary-text)' : 'var(--text-secondary)' }}>
+              <button key={tab.id} type="button" onClick={() => setListTab(tab.id)} className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-medium rounded-lg transition-colors" style={{ background: listTab === tab.id ? 'var(--primary-soft)' : 'transparent', color: listTab === tab.id ? 'var(--primary-text)' : 'var(--text-secondary)' }}>
                 <tab.icon size={14} />{tab.label}
               </button>
             ))}
+            <div className="flex-1" />
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+              <input className="input h-9 pl-9 pr-3 text-[12px] w-[220px]" placeholder="Buscar evaluación…" value={listSearch} onChange={(e) => setListSearch(e.target.value)} />
+            </div>
+            <span className="text-[12px] tabular-nums px-2" style={{ color: 'var(--text-muted)' }}>{shown.length} de {exams.length}</span>
           </div>
         </div>
         <div className="flex-1 overflow-auto px-6 lg:px-8 py-6">
@@ -372,27 +345,27 @@ export default function Examenes() {
 
   if (view === 'builder') {
     return (
-      <div className="h-full flex flex-col" style={{ background: 'linear-gradient(180deg, #e8e0f0 0%, #f0eaf7 40%, #f5f3f8 100%)' }}>
-        <div className="h-12 flex items-center justify-between px-4 shrink-0 border-b" style={{ background: 'rgba(255,255,255,0.9)', borderColor: 'rgba(0,0,0,0.06)' }}>
+      <div className="h-full flex flex-col" style={{ background: 'var(--bg)' }}>
+        <div className="h-12 flex items-center justify-between px-4 shrink-0 border-b" style={{ background: 'var(--header-bg)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2 min-w-0">
             <button type="button" className="btn-icon" onClick={() => setView('list')}><ArrowLeft size={18} /></button>
             <input className="bg-transparent border-0 outline-none text-[14px] font-semibold max-w-[280px]" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la evaluación" />
-            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: '#ede9fe', color: '#6d28d9' }}>{estado}</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--primary-soft)', color: 'var(--primary-text)' }}>{estado}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button type="button" className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${stylesPanelOpen ? 'bg-violet-100 text-violet-700' : 'text-slate-600'}`} onClick={() => setStylesPanelOpen(!stylesPanelOpen)}><Palette size={14} /> Estilo</button>
-            <button type="button" className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${activeTabBuilder === 'config' ? 'bg-violet-100 text-violet-700' : 'text-slate-600'}`} onClick={() => setActiveTabBuilder(activeTabBuilder === 'config' ? 'preguntas' : 'config')}><Settings size={14} /> Config</button>
-            <button type="button" className="h-8 px-4 rounded-full text-white text-[12px] font-semibold" style={{ background: '#7c3aed' }} onClick={handleSaveExam}><Save size={14} /> Guardar</button>
+            <button type="button" className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${stylesPanelOpen ? 'font-semibold' : ''}`} style={{ background: stylesPanelOpen ? 'var(--primary-soft)' : 'transparent', color: stylesPanelOpen ? 'var(--primary-text)' : 'var(--text-secondary)' }} onClick={() => setStylesPanelOpen(!stylesPanelOpen)}><Palette size={14} /> Estilo</button>
+            <button type="button" className="px-3 py-1.5 rounded-lg text-[12px] font-semibold" style={{ background: activeTabBuilder === 'config' ? 'var(--primary-soft)' : 'transparent', color: activeTabBuilder === 'config' ? 'var(--primary-text)' : 'var(--text-secondary)' }} onClick={() => setActiveTabBuilder(activeTabBuilder === 'config' ? 'preguntas' : 'config')}><Settings size={14} /> Config</button>
+            <button type="button" className="h-8 px-4 rounded-full text-white text-[12px] font-semibold" style={{ background: 'var(--primary)' }} onClick={handleSaveExam}><Save size={14} /> Guardar</button>
           </div>
         </div>
         <div className="flex-1 flex min-h-0 overflow-hidden">
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-2xl mx-auto space-y-3">
-              <div className="rounded-2xl bg-white shadow-md overflow-hidden">
+              <div className="rounded-2xl bg-white shadow-md overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
                 <div className="h-16" style={{ background: activeTheme.headerBg }} />
                 <div className="p-5 space-y-3">
                   <input className="w-full text-[18px] font-bold border-0 outline-none" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" />
-                  <textarea className="w-full text-[13px] border-0 outline-none resize-none" style={{ color: '#6b7280' }} rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Instrucciones (opcional)" />
+                  <textarea className="w-full text-[13px] border-0 outline-none resize-none" style={{ color: 'var(--text-secondary)' }} rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Instrucciones (opcional)" />
                   <div className="grid sm:grid-cols-2 gap-2">
                     <select className="input w-full text-[12px] h-9" value={temaId === '' ? '' : String(temaId)} onChange={(e) => setTemaId(e.target.value ? Number(e.target.value) : '')}>
                       <option value="">— Vincular capacitación —</option>
@@ -407,7 +380,7 @@ export default function Examenes() {
                 </div>
               </div>
               {activeTabBuilder === 'config' ? (
-                <div className="rounded-2xl bg-white p-5 shadow-md space-y-4">
+                <div className="rounded-2xl bg-white p-5 shadow-md space-y-4 border" style={{ borderColor: 'var(--border)' }}>
                   <h3 className="font-semibold text-[14px]">Configuración</h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <label className="block text-[12px] font-semibold">Tiempo (min)<input type="number" min={1} max={120} className="input w-full mt-1" value={tiempoLimite} onChange={(e) => setTiempoLimite(Number(e.target.value) || 15)} /></label>
@@ -419,10 +392,10 @@ export default function Examenes() {
               ) : (
                 <>
                   {preguntas.map((q, idx) => (
-                    <div key={q.id} className="rounded-2xl bg-white p-5 shadow-md">
+                    <div key={q.id} className="rounded-2xl bg-white p-5 shadow-md border" style={{ borderColor: 'var(--border)' }}>
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg text-white text-[12px] font-bold flex items-center justify-center" style={{ background: '#7c3aed' }}>{idx + 1}</span>
+                          <span className="w-7 h-7 rounded-lg text-white text-[12px] font-bold flex items-center justify-center" style={{ background: 'var(--primary)' }}>{idx + 1}</span>
                           <select className="input h-8 text-[12px]" value={q.tipo} onChange={(e) => updateQuestion(q.id, { tipo: e.target.value as ExamQuestionType })}>
                             {QUESTION_TYPES.map((t) => <option key={t.type} value={t.type}>{t.icon} {t.label}</option>)}
                           </select>
@@ -432,50 +405,50 @@ export default function Examenes() {
                           <button type="button" className="btn-icon" onClick={() => setPreguntas((p) => p.filter((x) => x.id !== q.id))} style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
                         </div>
                       </div>
-                      <input className="w-full text-[15px] font-medium border-0 border-b outline-none pb-2 mb-3" style={{ borderColor: '#e5e7eb' }} value={q.texto} onChange={(e) => updateQuestion(q.id, { texto: e.target.value })} placeholder="Escribe la pregunta…" />
+                      <input className="w-full text-[15px] font-medium border-0 border-b outline-none pb-2 mb-3" style={{ borderColor: 'var(--border)' }} value={q.texto} onChange={(e) => updateQuestion(q.id, { texto: e.target.value })} placeholder="Escribe la pregunta…" />
                       {(q.tipo === 'multiple' || q.tipo === 'casillas' || q.tipo === 'desplegable') && (
                         <div className="space-y-2">
                           {(q.opciones || []).map((op, opIdx) => {
                             const isCorrect = q.tipo === 'casillas' ? Array.isArray(q.correcta) && q.correcta.includes(opIdx) : Number(q.correcta) === opIdx
                             return (
                               <div key={opIdx} className="flex items-center gap-2">
-                                <button type="button" className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ border: isCorrect ? 'none' : '2px solid #d1d5db', background: isCorrect ? '#7c3aed' : 'transparent', color: '#fff' }} onClick={() => {
+                                <button type="button" className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ border: isCorrect ? 'none' : '2px solid var(--border-strong)', background: isCorrect ? 'var(--primary)' : 'transparent', color: '#fff' }} onClick={() => {
                                   if (q.tipo === 'casillas') {
                                     const cur = Array.isArray(q.correcta) ? [...q.correcta] : []
                                     updateQuestion(q.id, { correcta: cur.includes(opIdx) ? cur.filter((x) => x !== opIdx) : [...cur, opIdx] })
                                   } else updateQuestion(q.id, { correcta: opIdx })
                                 }}>{isCorrect && <Check size={12} strokeWidth={3} />}</button>
-                                <input className="flex-1 text-[13px] border-0 border-b outline-none py-1.5" style={{ borderColor: '#e5e7eb' }} value={op} onChange={(e) => { const ops = [...(q.opciones || [])]; ops[opIdx] = e.target.value; updateQuestion(q.id, { opciones: ops }) }} />
+                                <input className="flex-1 text-[13px] border-0 border-b outline-none py-1.5" style={{ borderColor: 'var(--border)' }} value={op} onChange={(e) => { const ops = [...(q.opciones || [])]; ops[opIdx] = e.target.value; updateQuestion(q.id, { opciones: ops }) }} />
                                 <button type="button" className="btn-icon" onClick={() => updateQuestion(q.id, { opciones: (q.opciones || []).filter((_, i) => i !== opIdx) })}><X size={13} /></button>
                               </div>
                             )
                           })}
-                          <button type="button" className="text-[13px] font-semibold" style={{ color: '#7c3aed' }} onClick={() => updateQuestion(q.id, { opciones: [...(q.opciones || []), `Opción ${(q.opciones?.length || 0) + 1}`] })}>+ Agregar opción</button>
+                          <button type="button" className="text-[13px] font-semibold" style={{ color: 'var(--primary-text)' }} onClick={() => updateQuestion(q.id, { opciones: [...(q.opciones || []), `Opción ${(q.opciones?.length || 0) + 1}`] })}>+ Agregar opción</button>
                         </div>
                       )}
                       {q.tipo === 'verdadero_falso' && (
                         <div className="flex gap-2">
                           {['Verdadero', 'Falso'].map((vf, i) => (
-                            <button key={vf} type="button" className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border" style={{ background: Number(q.correcta) === i ? '#ede9fe' : '#f9fafb', color: Number(q.correcta) === i ? '#6d28d9' : '#6b7280', borderColor: Number(q.correcta) === i ? '#7c3aed' : '#e5e7eb' }} onClick={() => updateQuestion(q.id, { correcta: i })}>{vf}</button>
+                            <button key={vf} type="button" className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border" style={{ background: Number(q.correcta) === i ? 'var(--primary-soft)' : 'var(--surface-2)', color: Number(q.correcta) === i ? 'var(--primary-text)' : 'var(--text-secondary)', borderColor: Number(q.correcta) === i ? 'var(--primary)' : 'var(--border)' }} onClick={() => updateQuestion(q.id, { correcta: i })}>{vf}</button>
                           ))}
                         </div>
                       )}
                     </div>
                   ))}
-                  <button type="button" className="w-full py-3.5 rounded-2xl border-2 border-dashed text-[13px] font-semibold flex items-center justify-center gap-2" style={{ borderColor: '#c4b5fd', color: '#6d28d9' }} onClick={() => addQuestion('multiple')}><Plus size={16} /> Agregar pregunta</button>
+                  <button type="button" className="w-full py-3.5 rounded-2xl border-2 border-dashed text-[13px] font-semibold flex items-center justify-center gap-2" style={{ borderColor: 'var(--primary)', color: 'var(--primary-text)' }} onClick={() => addQuestion('multiple')}><Plus size={16} /> Agregar pregunta</button>
                 </>
               )}
             </div>
           </div>
           {stylesPanelOpen && (
-            <aside className="w-[260px] shrink-0 border-l overflow-y-auto bg-white">
-              <div className="px-4 py-3 flex items-center justify-between border-b sticky top-0 bg-white">
+            <aside className="w-[260px] shrink-0 border-l overflow-y-auto" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="px-4 py-3 flex items-center justify-between border-b sticky top-0 z-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <span className="font-semibold text-[13px]">Temas visuales</span>
                 <button type="button" className="btn-icon" onClick={() => setStylesPanelOpen(false)}><X size={15} /></button>
               </div>
               <div className="p-3 space-y-2">
                 {FORM_THEMES.map((theme) => (
-                  <button key={theme.id} type="button" onClick={() => setSelectedThemeId(theme.id)} className="w-full rounded-xl p-3 text-left text-white h-[72px]" style={{ background: theme.bgStyle, boxShadow: selectedThemeId === theme.id ? '0 0 0 2px #7c3aed' : 'none' }}>
+                  <button key={theme.id} type="button" onClick={() => setSelectedThemeId(theme.id)} className="w-full rounded-xl p-3 text-left text-white h-[72px]" style={{ background: theme.bgStyle, boxShadow: selectedThemeId === theme.id ? '0 0 0 2px var(--primary)' : 'none' }}>
                     <div className="font-bold text-[11px]">{theme.name}</div>
                     {selectedThemeId === theme.id && <div className="mt-1 text-[10px] opacity-90">✓ Seleccionado</div>}
                   </button>
